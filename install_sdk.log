@@ -1,0 +1,47 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< com.itways.assistant:ai-engine-sdk >-----------------
+[INFO] Building ai-engine-sdk 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ ai-engine-sdk ---
+[INFO] Deleting E:\itways\git\assitance-hub\ai-assistant-api\ai-engine-sdk\target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ ai-engine-sdk ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ ai-engine-sdk ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 18 source files with javac [debug target 21] to target\classes
+[INFO] Annotation processing is enabled because one or more processors were found
+  on the class path. A future release of javac may disable annotation processing
+  unless at least one processor is specified by name (-processor), or a search
+  path is specified (--processor-path, --processor-module-path), or annotation
+  processing is enabled explicitly (-proc:only, -proc:full).
+  Use -Xlint:-options to suppress this message.
+  Use -proc:none to disable annotation processing.
+[INFO] /E:/itways/git/assitance-hub/ai-assistant-api/ai-engine-sdk/src/main/java/com/itways/assistant/ai/impl/GroqAgent.java: Some input files use unchecked or unsafe operations.
+[INFO] /E:/itways/git/assitance-hub/ai-assistant-api/ai-engine-sdk/src/main/java/com/itways/assistant/ai/impl/GroqAgent.java: Recompile with -Xlint:unchecked for details.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ ai-engine-sdk ---
+[INFO] skip non existing resourceDirectory E:\itways\git\assitance-hub\ai-assistant-api\ai-engine-sdk\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.11.0:testCompile (default-testCompile) @ ai-engine-sdk ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.2.2:test (default-test) @ ai-engine-sdk ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ ai-engine-sdk ---
+[INFO] Building jar: E:\itways\git\assitance-hub\ai-assistant-api\ai-engine-sdk\target\ai-engine-sdk-1.0.0.jar
+[INFO] 
+[INFO] --- install:3.1.1:install (default-install) @ ai-engine-sdk ---
+[INFO] Installing E:\itways\git\assitance-hub\ai-assistant-api\ai-engine-sdk\pom.xml to C:\Users\Acer\.m2\repository\com\itways\assistant\ai-engine-sdk\1.0.0\ai-engine-sdk-1.0.0.pom
+[INFO] Installing E:\itways\git\assitance-hub\ai-assistant-api\ai-engine-sdk\target\ai-engine-sdk-1.0.0.jar to C:\Users\Acer\.m2\repository\com\itways\assistant\ai-engine-sdk\1.0.0\ai-engine-sdk-1.0.0.jar
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  6.880 s
+[INFO] Finished at: 2026-02-04T13:45:44+03:00
+[INFO] ------------------------------------------------------------------------
