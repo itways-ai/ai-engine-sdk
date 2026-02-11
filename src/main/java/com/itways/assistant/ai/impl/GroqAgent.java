@@ -145,7 +145,18 @@ public class GroqAgent implements AiAgent {
 
 	private Map<String, Object> createChatBody(AiChatRequest request) {
 		Map<String, Object> body = new HashMap<>();
-		body.put("model", getOrDefault(request.getModel(), DEFAULT_CHAT_MODEL));
+
+		boolean hasImages = request.getFiles() != null && request.getFiles().stream()
+				.anyMatch(f -> f.getMimeType() != null && f.getMimeType().startsWith("image/"));
+
+		String model = request.getModel();
+		if (model == null || model.isEmpty() || DEFAULT_CHAT_MODEL.equals(model)) {
+			// Switch to a vision model if images are present and no specific model was
+			// requested
+			model = hasImages ? "meta-llama/llama-4-scout-17b-16e-instruct" : DEFAULT_CHAT_MODEL;
+		}
+
+		body.put("model", model);
 		body.put("temperature", getOrDefault(request.getTemperature(), 0.1));
 		if (request.getMaxTokens() != null) {
 			body.put("max_tokens", request.getMaxTokens());
@@ -192,16 +203,21 @@ public class GroqAgent implements AiAgent {
 				String dataUrl = "data:" + mimeType + ";base64," + base64Content;
 				contentParts.add(Map.of("type", "image_url", "image_url", Map.of("url", dataUrl)));
 			} else {
+				// Handle Other Files: Inject filename as context anyway
+				String fileHeader = String.format("\n[Attached File: %s]\n", file.getFilename());
+
 				// Handle Text Files (Direct Content Injection)
-				// treat application/octet-stream as text (common for code files without clear mime type)
-				if (mimeType.startsWith("text/") || mimeType.contains("json") || mimeType.contains("xml") 
-						|| mimeType.contains("yaml") || mimeType.contains("script") 
+				if (mimeType.startsWith("text/") || mimeType.contains("json") || mimeType.contains("xml")
+						|| mimeType.contains("yaml") || mimeType.contains("script")
 						|| "application/octet-stream".equals(mimeType)) {
 					String fileContent = new String(file.getContent(), StandardCharsets.UTF_8);
-					String injectedText = String.format("\n[File: %s]\n%s\n", file.getFilename(), fileContent);
+					String injectedText = String.format("%s%s\n", fileHeader, fileContent);
 					contentParts.add(Map.of("type", "text", "text", injectedText));
 				} else {
-					log.warn("Skipping unsupported file type for text injection: {}", mimeType);
+					// For other binary types (like PDF), AI can't read them directly yet,
+					// but knowing the file is there helps it understand user references.
+					contentParts.add(Map.of("type", "text", "text", fileHeader));
+					log.warn("Skipping content injection for binary file: {} ({})", file.getFilename(), mimeType);
 				}
 			}
 		}
