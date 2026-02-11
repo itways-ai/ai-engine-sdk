@@ -18,4 +18,5 @@ public class AiChatRequest extends BaseAiRequest {
 	private List<AiMessage> messages;
 	private Double temperature;
 	private Integer maxTokens;
+	private List<AiWrappedFile> files;
 }

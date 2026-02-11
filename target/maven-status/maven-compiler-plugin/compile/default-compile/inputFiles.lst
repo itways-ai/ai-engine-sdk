@@ -8,6 +8,7 @@ E:\itways\git\assitance-hub\ai-assistant-api\ai-engine-sdk\src\main\java\com\itw
 E:\itways\git\assitance-hub\ai-assistant-api\ai-engine-sdk\src\main\java\com\itways\assistant\ai\dto\AiRequestConfig.java
 E:\itways\git\assitance-hub\ai-assistant-api\ai-engine-sdk\src\main\java\com\itways\assistant\ai\dto\AiResponse.java
 E:\itways\git\assitance-hub\ai-assistant-api\ai-engine-sdk\src\main\java\com\itways\assistant\ai\dto\AiTranscriptionRequest.java
+E:\itways\git\assitance-hub\ai-assistant-api\ai-engine-sdk\src\main\java\com\itways\assistant\ai\dto\AiWrappedFile.java
 E:\itways\git\assitance-hub\ai-assistant-api\ai-engine-sdk\src\main\java\com\itways\assistant\ai\dto\BaseAiRequest.java
 E:\itways\git\assitance-hub\ai-assistant-api\ai-engine-sdk\src\main\java\com\itways\assistant\ai\dto\IntentResult.java
 E:\itways\git\assitance-hub\ai-assistant-api\ai-engine-sdk\src\main\java\com\itways\assistant\ai\EnableAi.java
