@@ -1,6 +1,7 @@
 com\itways\assistant\ai\impl\GroqAgent$1.class
 com\itways\assistant\ai\impl\OpenAiAgent.class
 com\itways\assistant\ai\dto\BaseAiRequest$BaseAiRequestBuilder.class
+com\itways\assistant\ai\impl\GeminiAgent.class
 com\itways\assistant\ai\dto\AiChatResponse$AiChatResponseBuilder.class
 com\itways\assistant\ai\config\AiProviderProperties.class
 com\itways\assistant\ai\dto\AiTranscriptionRequest.class
@@ -9,14 +10,18 @@ com\itways\assistant\ai\impl\GroqAgent$GroqResponse.class
 com\itways\assistant\ai\dto\AiMessage.class
 com\itways\assistant\ai\dto\AiTranscriptionRequest$AiTranscriptionRequestBuilder.class
 com\itways\assistant\ai\dto\AiChatRequest$AiChatRequestBuilderImpl.class
+com\itways\assistant\ai\util\AiPromptUtils.class
 com\itways\assistant\ai\dto\AiChatRequest$AiChatRequestBuilder.class
 com\itways\assistant\ai\dto\AiMessage$AiMessageBuilder.class
 com\itways\assistant\ai\impl\GroqAgent.class
+com\itways\assistant\ai\config\AiConfig.class
 com\itways\assistant\ai\dto\AiChatRequest.class
 com\itways\assistant\ai\dto\AiRequestConfig$AiRequestConfigBuilder.class
+com\itways\assistant\ai\impl\MistralAgent.class
 com\itways\assistant\ai\dto\AiResponse.class
 com\itways\assistant\ai\impl\OpenAiAgent$1.class
 com\itways\assistant\ai\EnableAi.class
+com\itways\assistant\ai\impl\AnthropicAgent.class
 com\itways\assistant\ai\config\AiAgent.class
 com\itways\assistant\ai\dto\AiRequestConfig.class
 com\itways\assistant\ai\dto\AiResponse$AiResponseBuilder.class
@@ -26,5 +31,6 @@ com\itways\assistant\ai\dto\AiChatResponse$Usage.class
 com\itways\assistant\ai\dto\AiChatResponse.class
 com\itways\assistant\ai\dto\AiResponse$Usage.class
 com\itways\assistant\ai\service\AiService.class
+com\itways\assistant\ai\service\JsonValueExtractor.class
 com\itways\assistant\ai\dto\IntentResult.class
 com\itways\assistant\ai\config\AiEngineAutoConfiguration.class

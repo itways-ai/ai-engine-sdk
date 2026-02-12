@@ -11,7 +11,10 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
+import com.itways.assistant.ai.impl.AnthropicAgent;
+import com.itways.assistant.ai.impl.GeminiAgent;
 import com.itways.assistant.ai.impl.GroqAgent;
+import com.itways.assistant.ai.impl.MistralAgent;
 import com.itways.assistant.ai.impl.OpenAiAgent;
 
 import jakarta.annotation.PostConstruct;
@@ -27,6 +30,15 @@ public class AiEngineAutoConfiguration {
 
 	@Value("${ai.openai.api-key:}")
 	private String openAiApiKey;
+
+	@Value("${ai.anthropic.api-key:}")
+	private String anthropicApiKey;
+
+	@Value("${ai.gemini.api-key:}")
+	private String geminiApiKey;
+
+	@Value("${ai.mistral.api-key:}")
+	private String mistralApiKey;
 
 	@Value("${ai.active-provider:GROQ}")
 	private String activeProvider;
@@ -44,6 +56,21 @@ public class AiEngineAutoConfiguration {
 	@Bean
 	public OpenAiAgent openAiAgent() {
 		return new OpenAiAgent(openAiApiKey);
+	}
+
+	@Bean
+	public AnthropicAgent anthropicAgent() {
+		return new AnthropicAgent(anthropicApiKey);
+	}
+
+	@Bean
+	public GeminiAgent geminiAgent() {
+		return new GeminiAgent(geminiApiKey);
+	}
+
+	@Bean
+	public MistralAgent mistralAgent() {
+		return new MistralAgent(mistralApiKey);
 	}
 
 	@Bean
