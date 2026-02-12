@@ -4,6 +4,7 @@ com\itways\assistant\ai\dto\BaseAiRequest$BaseAiRequestBuilder.class
 com\itways\assistant\ai\dto\AiChatResponse$AiChatResponseBuilder.class
 com\itways\assistant\ai\config\AiProviderProperties.class
 com\itways\assistant\ai\dto\AiTranscriptionRequest.class
+com\itways\assistant\ai\dto\AiWrappedFile.class
 com\itways\assistant\ai\dto\AiTranscriptionRequest$AiTranscriptionRequestBuilderImpl.class
 com\itways\assistant\ai\impl\GroqAgent$GroqResponse.class
 com\itways\assistant\ai\dto\AiMessage.class
@@ -15,6 +16,7 @@ com\itways\assistant\ai\impl\GroqAgent.class
 com\itways\assistant\ai\dto\AiChatRequest.class
 com\itways\assistant\ai\dto\AiRequestConfig$AiRequestConfigBuilder.class
 com\itways\assistant\ai\dto\AiResponse.class
+com\itways\assistant\ai\dto\AiWrappedFile$AiWrappedFileBuilder.class
 com\itways\assistant\ai\impl\OpenAiAgent$1.class
 com\itways\assistant\ai\EnableAi.class
 com\itways\assistant\ai\config\AiAgent.class
