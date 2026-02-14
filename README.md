@@ -4,7 +4,7 @@ A lightweight, multi-provider Java SDK designed for seamless integration of AI c
 
 ## 🚀 Features
 
-- **Multi-Provider Support**: Switch between OpenAI, Groq, Anthropic, or local models using a unified API.
+- **Multi-Provider Support**: Switch between OpenAI, Groq, Anthropic, Gemini, Mistral, or local Ollama models using a unified API.
 - **Smart Transcription**: High-performance speech-to-text processing.
 - **JSON Value Extractor**: Specialized utility for extracting nested data from AI-generated JSON responses with path support (e.g., `entities.user[0].name`).
 - **Spring Boot Native**: Includes `@EnableAi` for instant auto-configuration and bean management.
@@ -40,14 +40,19 @@ Configure your AI providers in `application.yml`:
 
 ```yaml
 ai:
-  providers:
-    openai:
-      api-key: ${OPENAI_API_KEY}
-      model: gpt-4
-    groq:
-      api-key: ${GROQ_API_KEY}
-      model: llama3-70b-8192
-  default-provider: openai
+  active-provider: OLLAMA  # Options: OPENAI, GROQ, CLAUDE, GEMINI, MISTRAL, OLLAMA
+  openai:
+    api-key: ${OPENAI_API_KEY}
+  groq:
+    api-key: ${GROQ_API_KEY}
+  claude:
+    api-key: ${CLAUDE_API_KEY}
+  gemini:
+    api-key: ${GEMINI_API_KEY}
+  mistral:
+    api-key: ${MISTRAL_API_KEY}
+  ollama:
+    base-url: http://localhost:11434  # Default Ollama URL
 ```
 
 ## 📖 Usage
@@ -99,6 +104,36 @@ public void parseResponse(String aiJson) {
     System.out.println("Extracted User ID: " + userId);
 }
 ```
+
+### 4. Using Local Ollama Models
+Run AI models locally with Ollama for privacy and cost savings.
+
+```java
+// Configure in application.yml
+ai:
+  active-provider: OLLAMA
+  ollama:
+    base-url: http://localhost:11434
+
+// Use in code - specify the model you have installed
+AiChatRequest request = AiChatRequest.builder()
+    .message("Explain quantum computing")
+    .model("llama3.2:3b")  // or phi3:mini, deepseek-r1:7b, etc.
+    .temperature(0.7)
+    .build();
+    
+AiResponse response = aiService.chat(request);
+```
+
+**Available Ollama Models** (based on your installation):
+- `llama3.2:3b` - Fast, efficient model (2.0 GB)
+- `phi3:mini` - Microsoft's compact model (2.2 GB)
+- `deepseek-r1:7b` - Reasoning-focused model (4.7 GB)
+- `llama3:instruct` - Instruction-tuned model (4.7 GB)
+
+To install more models: `docker exec -it ollama ollama pull <model-name>`
+
+📘 **For detailed Ollama setup and configuration, see [OLLAMA_SETUP.md](OLLAMA_SETUP.md)**
 
 ## 🧩 Core Components
 

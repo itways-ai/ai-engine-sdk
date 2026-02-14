@@ -35,6 +35,9 @@ public class AiEngineAutoConfiguration {
 	@Value("${ai.mistral.api-key:}")
 	private String mistralApiKey;
 
+	@Value("${ai.ollama.base-url:http://localhost:11434}")
+	private String ollamaBaseUrl;
+
 	@Value("${ai.active-provider:GROQ}")
 	private String activeProvider;
 
@@ -66,6 +69,11 @@ public class AiEngineAutoConfiguration {
 	@Bean
 	public MistralAgent mistralAgent() {
 		return new MistralAgent(mistralApiKey);
+	}
+
+	@Bean
+	public OllamaAgent ollamaAgent() {
+		return new OllamaAgent(ollamaBaseUrl);
 	}
 
 	@Bean
