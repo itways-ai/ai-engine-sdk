@@ -20,9 +20,11 @@ import java.util.stream.Collectors;
 public class GeminiAgent implements AiAgent {
     private final String defaultApiKey;
     private final RestTemplate restTemplate = new RestTemplate();
+    // available models
+    //  gemini-2.5-flash-lite fastest
 
     private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
-    private static final String DEFAULT_MODEL = "gemini-2.5-flash";
+    private static final String DEFAULT_MODEL = "gemini-2.5-flash-lite";
 
     @Override
     public String getProvider() {

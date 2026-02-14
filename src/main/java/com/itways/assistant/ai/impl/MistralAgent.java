@@ -5,6 +5,7 @@ import com.itways.assistant.ai.dto.AiChatRequest;
 import com.itways.assistant.ai.dto.AiResponse;
 import com.itways.assistant.ai.dto.AiTranscriptionRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -16,13 +17,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RequiredArgsConstructor
 public class MistralAgent implements AiAgent {
     private final String defaultApiKey;
     private final RestTemplate restTemplate = new RestTemplate();
 
     private static final String MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
-    private static final String DEFAULT_MODEL = "mistral-large-latest";
+
+    // available models
+    // mistral-small-2506 -> fastest
+    // ministral-14b-2512
+    // ministral-3b-2512
+    private static final String DEFAULT_MODEL = "mistral-small-2506";
 
     @Override
     public String getProvider() {
@@ -31,6 +38,8 @@ public class MistralAgent implements AiAgent {
 
     @Override
     public AiResponse chat(AiChatRequest request) {
+        log.info("active model: {}", DEFAULT_MODEL);
+
         String effectiveApiKey = (request.getConfig() != null && request.getConfig().getApiKey() != null)
                 ? request.getConfig().getApiKey()
                 : defaultApiKey;

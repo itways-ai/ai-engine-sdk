@@ -26,8 +26,8 @@ public class AiEngineAutoConfiguration {
 	@Value("${ai.openai.api-key:}")
 	private String openAiApiKey;
 
-	@Value("${ai.anthropic.api-key:}")
-	private String anthropicApiKey;
+	@Value("${ai.claude.api-key:}")
+	private String claudeApiKey;
 
 	@Value("${ai.gemini.api-key:}")
 	private String geminiApiKey;
@@ -54,8 +54,8 @@ public class AiEngineAutoConfiguration {
 	}
 
 	@Bean
-	public AnthropicAgent anthropicAgent() {
-		return new AnthropicAgent(anthropicApiKey);
+	public AnthropicAgent claudeAgent() {
+		return new AnthropicAgent(claudeApiKey);
 	}
 
 	@Bean

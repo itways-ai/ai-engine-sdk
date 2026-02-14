@@ -5,6 +5,7 @@ import com.itways.assistant.ai.dto.AiChatRequest;
 import com.itways.assistant.ai.dto.AiResponse;
 import com.itways.assistant.ai.dto.AiTranscriptionRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -17,27 +18,29 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
+@Slf4j
 public class AnthropicAgent implements AiAgent {
 
     private final String defaultApiKey;
     private final RestTemplate restTemplate = new RestTemplate();
 
     private static final String ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-    private static final String DEFAULT_MODEL = "claude-3-5-sonnet-20241022";
+    private static final String DEFAULT_MODEL = "claude-sonnet-3.5";
     private static final String ANTHROPIC_VERSION = "2023-06-01";
 
     @Override
     public String getProvider() {
-        return "ANTHROPIC";
+        return "CLAUDE";
     }
 
     @Override
     public AiResponse chat(AiChatRequest request) {
+        log.info("active model: {}", DEFAULT_MODEL);
         String effectiveApiKey = (request.getConfig() != null && request.getConfig().getApiKey() != null)
                 ? request.getConfig().getApiKey()
                 : defaultApiKey;
         if (effectiveApiKey == null || effectiveApiKey.isEmpty()) {
-            return AiResponse.builder().content("Error: Anthropic API Key missing").build();
+            return AiResponse.builder().content("Error: Claude API Key missing").build();
         }
 
         HttpHeaders headers = new HttpHeaders();
@@ -81,7 +84,7 @@ public class AnthropicAgent implements AiAgent {
                 }
             }
         } catch (Exception e) {
-            return AiResponse.builder().content("Anthropic API Error: " + e.getMessage()).build();
+            return AiResponse.builder().content("Claude API Error: " + e.getMessage()).build();
         }
         return AiResponse.builder().content("").build();
     }
@@ -89,7 +92,7 @@ public class AnthropicAgent implements AiAgent {
     @Override
     public AiResponse transcribe(AiTranscriptionRequest request) {
         return AiResponse.builder()
-                .content("Error: Anthropic does not support audio transcription")
+                .content("Error: Claude does not support audio transcription")
                 .build();
     }
 }

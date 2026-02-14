@@ -32,6 +32,9 @@ public class OpenAiAgent implements AiAgent {
 
     private static final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
     private static final String OPENAI_SPEECH_URL = "https://api.openai.com/v1/audio/transcriptions";
+    // available models
+    // gpt-5-nano
+    // gpt-4o
     private static final String DEFAULT_CHAT_MODEL = "gpt-4o";
     private static final String DEFAULT_WHISPER_MODEL = "whisper-1";
 
