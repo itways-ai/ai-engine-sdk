@@ -1,10 +1,9 @@
-package com.itways.assistant.ai.impl;
+package com.itways.assistant.ai.service.impl;
 
-import com.itways.assistant.ai.config.AiAgent;
 import com.itways.assistant.ai.dto.AiChatRequest;
 import com.itways.assistant.ai.dto.AiResponse;
 import com.itways.assistant.ai.dto.AiTranscriptionRequest;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -16,10 +15,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@RequiredArgsConstructor
-public class GeminiAgent implements AiAgent {
-    private final String defaultApiKey;
-    private final RestTemplate restTemplate = new RestTemplate();
+@Slf4j
+public class GeminiAgent extends AbstractAiAgent {
+
+
+    public GeminiAgent(String defaultApiKey, RestTemplate restTemplate) {
+        super(defaultApiKey, restTemplate);
+    }
     // available models
     //  gemini-2.5-flash-lite fastest
 
@@ -32,17 +34,17 @@ public class GeminiAgent implements AiAgent {
     }
     @Override
     public AiResponse chat(AiChatRequest request) {
-        String effectiveApiKey = (request.getConfig() != null && request.getConfig().getApiKey() != null)
-                ? request.getConfig().getApiKey()
-                : defaultApiKey;
-        if (effectiveApiKey == null || effectiveApiKey.isEmpty()) {
+        String model = request.getModel() != null ? request.getModel() : DEFAULT_MODEL;
+        log.info("Processing chat request for Gemini, model: {}", model);
+
+        String effectiveApiKey = getEffectiveApiKey(request);
+        if (effectiveApiKey.isEmpty()) {
+            log.error("Gemini API Key missing");
             return AiResponse.builder().content("Error: Gemini API Key missing").build();
         }
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-
-        String model = request.getModel() != null ? request.getModel() : DEFAULT_MODEL;
 
         Map<String, Object> body = new HashMap<>();
         body.put("contents", request.getMessages().stream()
@@ -83,6 +85,7 @@ public class GeminiAgent implements AiAgent {
                                 (Integer) usageMetadata.get("totalTokenCount"));
                     }
 
+                    log.debug("Gemini API call successful, usage: {}", usage);
                     return AiResponse.builder()
                             .content(text)
                             .model(model)
@@ -91,13 +94,16 @@ public class GeminiAgent implements AiAgent {
                 }
             }
         } catch (Exception e) {
+            log.error("Gemini API Error during chat request", e);
             return AiResponse.builder().content("Gemini API Error: " + e.getMessage()).build();
         }
+        log.warn("Gemini API returned an empty or invalid response shape");
         return AiResponse.builder().content("").build();
     }
 
     @Override
     public AiResponse transcribe(AiTranscriptionRequest request) {
+        log.warn("Gemini does not support audio transcription");
         return AiResponse.builder()
                 .content("Error: Gemini does not support audio transcription via this SDK")
                 .build();

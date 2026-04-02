@@ -1,4 +1,4 @@
-package com.itways.assistant.ai.impl;
+package com.itways.assistant.ai.service.impl;
 
 import java.util.HashMap;
 import java.util.List;
@@ -14,7 +14,6 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
-import com.itways.assistant.ai.config.AiAgent;
 import com.itways.assistant.ai.dto.AiChatRequest;
 import com.itways.assistant.ai.dto.AiResponse;
 import com.itways.assistant.ai.dto.AiTranscriptionRequest;
@@ -22,13 +21,15 @@ import com.itways.assistant.ai.dto.AiTranscriptionRequest;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
-@RequiredArgsConstructor
-public class OpenAiAgent implements AiAgent {
+@Slf4j
+public class OpenAiAgent extends AbstractAiAgent {
 
-    private final String defaultApiKey;
-    private final RestTemplate restTemplate = new RestTemplate();
+    public OpenAiAgent(String defaultApiKey, RestTemplate restTemplate) {
+        super(defaultApiKey, restTemplate);
+    }
+
 
     private static final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
     private static final String OPENAI_SPEECH_URL = "https://api.openai.com/v1/audio/transcriptions";
@@ -45,10 +46,11 @@ public class OpenAiAgent implements AiAgent {
 
     @Override
     public AiResponse chat(AiChatRequest request) {
-        String effectiveApiKey = (request.getConfig() != null && request.getConfig().getApiKey() != null)
-                ? request.getConfig().getApiKey()
-                : defaultApiKey;
-        if (effectiveApiKey == null || effectiveApiKey.isEmpty()) {
+        log.info("Processing chat request for OpenAI, model: {}",
+                request.getModel() != null ? request.getModel() : DEFAULT_CHAT_MODEL);
+        String effectiveApiKey = getEffectiveApiKey(request);
+        if (effectiveApiKey.isEmpty()) {
+            log.error("OpenAI API Key missing");
             return AiResponse.builder().content("Error: OpenAI API Key missing").build();
         }
 
@@ -85,6 +87,7 @@ public class OpenAiAgent implements AiAgent {
                                 (Integer) usageMap.get("total_tokens"));
                     }
 
+                    log.debug("OpenAI API call successful, usage: {}", usage);
                     return AiResponse.builder()
                             .content(content)
                             .model((String) responseBody.get("model"))
@@ -93,17 +96,20 @@ public class OpenAiAgent implements AiAgent {
                 }
             }
         } catch (Exception e) {
+            log.error("OpenAI API Error during chat request", e);
             return AiResponse.builder().content("OpenAI API Error: " + e.getMessage()).build();
         }
+        log.warn("OpenAI API returned an empty or invalid response shape");
         return AiResponse.builder().content("").build();
     }
 
     @Override
     public AiResponse transcribe(AiTranscriptionRequest request) {
-        String effectiveApiKey = (request.getConfig() != null && request.getConfig().getApiKey() != null)
-                ? request.getConfig().getApiKey()
-                : defaultApiKey;
-        if (effectiveApiKey == null || effectiveApiKey.isEmpty()) {
+        log.info("Processing transcription request for OpenAI, model: {}",
+                request.getModel() != null ? request.getModel() : DEFAULT_WHISPER_MODEL);
+        String effectiveApiKey = getEffectiveApiKey(request);
+        if (effectiveApiKey.isEmpty()) {
+            log.error("OpenAI API Key missing");
             return AiResponse.builder().content("Error: OpenAI API Key missing").build();
         }
 
@@ -133,14 +139,17 @@ public class OpenAiAgent implements AiAgent {
             ResponseEntity<OpenAIResponse> response = restTemplate.postForEntity(OPENAI_SPEECH_URL, requestEntity,
                     OpenAIResponse.class);
             if (response.getBody() != null) {
+                log.debug("OpenAI Transcription successful");
                 return AiResponse.builder()
                         .content(response.getBody().getText())
                         .model(request.getModel() != null ? request.getModel() : DEFAULT_WHISPER_MODEL)
                         .build();
             }
+            log.warn("No response body from OpenAI Transcription");
             return AiResponse.builder().content("No response from OpenAI").build();
 
         } catch (Exception e) {
+            log.error("Error calling OpenAI Transcription", e);
             return AiResponse.builder().content("Error calling OpenAI: " + e.getMessage()).build();
         }
     }

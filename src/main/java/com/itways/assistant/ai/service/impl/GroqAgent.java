@@ -1,4 +1,4 @@
-package com.itways.assistant.ai.impl;
+package com.itways.assistant.ai.service.impl;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -18,7 +18,6 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
-import com.itways.assistant.ai.config.AiAgent;
 import com.itways.assistant.ai.dto.AiChatRequest;
 import com.itways.assistant.ai.dto.AiMessage;
 import com.itways.assistant.ai.dto.AiResponse;
@@ -37,7 +36,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Data
-public class GroqAgent implements AiAgent {
+public class GroqAgent extends AbstractAiAgent {
 
 	private static final String GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
 	private static final String GROQ_TRANSCRIPTION_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
@@ -45,12 +44,8 @@ public class GroqAgent implements AiAgent {
 	private static final String DEFAULT_WHISPER_MODEL = "whisper-large-v3";
 	private static final int TIMEOUT_MS = 60000;
 
-	private final String defaultApiKey;
-	private final RestTemplate restTemplate;
-
-	public GroqAgent(String defaultApiKey) {
-		this.defaultApiKey = defaultApiKey;
-		this.restTemplate = createRelaxedRestTemplate();
+	public GroqAgent(String defaultApiKey, RestTemplate restTemplate) {
+		super(defaultApiKey, restTemplate);
 	}
 
 	@Override
@@ -60,8 +55,11 @@ public class GroqAgent implements AiAgent {
 
 	@Override
 	public AiResponse chat(AiChatRequest request) {
-		String apiKey = getEffectiveApiKey(request.getConfig() != null ? request.getConfig().getApiKey() : null);
+		String model = request.getModel() != null ? request.getModel() : DEFAULT_CHAT_MODEL;
+		log.info("Processing chat request for Groq, model: {}", model);
+		String apiKey = getEffectiveApiKey(request);
 		if (apiKey.isEmpty()) {
+			log.error("Groq API Key missing");
 			return errorResponse("Groq API Key missing");
 		}
 
@@ -69,6 +67,7 @@ public class GroqAgent implements AiAgent {
 			HttpEntity<Map<String, Object>> entity = new HttpEntity<>(createChatBody(request),
 					createJsonHeaders(apiKey));
 			ResponseEntity<Map> response = restTemplate.postForEntity(GROQ_CHAT_URL, entity, Map.class);
+			log.debug("Groq chat API call successful");
 			return parseChatResponse(response.getBody(), request.getModel());
 		} catch (RestClientException e) {
 			log.error("Error calling Groq Chat API", e);
@@ -78,8 +77,11 @@ public class GroqAgent implements AiAgent {
 
 	@Override
 	public AiResponse transcribe(AiTranscriptionRequest request) {
-		String apiKey = getEffectiveApiKey(request.getConfig() != null ? request.getConfig().getApiKey() : null);
+		String model = getOrDefault(request.getModel(), DEFAULT_WHISPER_MODEL);
+		log.info("Processing transcription request for Groq, model: {}", model);
+		String apiKey = getEffectiveApiKey(request);
 		if (apiKey.isEmpty()) {
+			log.error("Groq API Key missing");
 			return errorResponse("Groq API Key missing");
 		}
 
@@ -88,6 +90,7 @@ public class GroqAgent implements AiAgent {
 					createMultipartHeaders(apiKey));
 			ResponseEntity<GroqResponse> response = restTemplate.postForEntity(GROQ_TRANSCRIPTION_URL, entity,
 					GroqResponse.class);
+			log.debug("Groq transcription API call successful");
 			return parseTranscriptionResponse(response.getBody(), request.getModel());
 		} catch (RestClientException e) {
 			log.error("Error calling Groq Transcription API", e);
@@ -98,36 +101,6 @@ public class GroqAgent implements AiAgent {
 	// -------------------------------------------------------------------------
 	// Helper Methods
 	// -------------------------------------------------------------------------
-
-	private RestTemplate createRelaxedRestTemplate() {
-		try {
-			// Trust all certificates to avoid SSL/TLS handshake issues
-			javax.net.ssl.SSLContext sslContext = org.apache.hc.core5.ssl.SSLContexts.custom()
-					.loadTrustMaterial(null, (chain, authType) -> true).build();
-
-			// Create HttpClient with relaxed SSL
-			org.apache.hc.client5.http.impl.classic.CloseableHttpClient httpClient = org.apache.hc.client5.http.impl.classic.HttpClients
-					.custom()
-					.setConnectionManager(org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder
-							.create()
-							.setSSLSocketFactory(new org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory(
-									sslContext, org.apache.hc.client5.http.ssl.NoopHostnameVerifier.INSTANCE))
-							.build())
-					.build();
-
-			HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(httpClient);
-			factory.setConnectTimeout(TIMEOUT_MS);
-			return new RestTemplate(factory);
-		} catch (Exception e) {
-			log.error("Failed to configure relaxed SSL for GroqAgent. Falling back to default RestTemplate.", e);
-			return new RestTemplate();
-		}
-	}
-
-	private String getEffectiveApiKey(String overrideKey) {
-		return (overrideKey != null && !overrideKey.isEmpty()) ? overrideKey
-				: (defaultApiKey != null ? defaultApiKey : "");
-	}
 
 	private HttpHeaders createJsonHeaders(String apiKey) {
 		HttpHeaders headers = new HttpHeaders();

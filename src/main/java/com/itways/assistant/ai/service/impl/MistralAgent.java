@@ -1,10 +1,8 @@
-package com.itways.assistant.ai.impl;
+package com.itways.assistant.ai.service.impl;
 
-import com.itways.assistant.ai.config.AiAgent;
 import com.itways.assistant.ai.dto.AiChatRequest;
 import com.itways.assistant.ai.dto.AiResponse;
 import com.itways.assistant.ai.dto.AiTranscriptionRequest;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -18,10 +16,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
-@RequiredArgsConstructor
-public class MistralAgent implements AiAgent {
-    private final String defaultApiKey;
-    private final RestTemplate restTemplate = new RestTemplate();
+public class MistralAgent extends AbstractAiAgent {
+
+    public MistralAgent(String defaultApiKey, org.springframework.web.client.RestTemplate restTemplate) {
+        super(defaultApiKey, restTemplate);
+    }
 
     private static final String MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
 
@@ -38,12 +37,11 @@ public class MistralAgent implements AiAgent {
 
     @Override
     public AiResponse chat(AiChatRequest request) {
-        log.info("active model: {}", DEFAULT_MODEL);
+        log.info("Processing chat request for Mistral, model: {}", request.getModel() != null ? request.getModel() : DEFAULT_MODEL);
 
-        String effectiveApiKey = (request.getConfig() != null && request.getConfig().getApiKey() != null)
-                ? request.getConfig().getApiKey()
-                : defaultApiKey;
-        if (effectiveApiKey == null || effectiveApiKey.isEmpty()) {
+        String effectiveApiKey = getEffectiveApiKey(request);
+        if (effectiveApiKey.isEmpty()) {
+            log.error("Mistral API Key missing");
             return AiResponse.builder().content("Error: Mistral API Key missing").build();
         }
 
@@ -82,6 +80,7 @@ public class MistralAgent implements AiAgent {
                                 (Integer) usageMap.get("total_tokens"));
                     }
 
+                    log.debug("Mistral API call successful, usage: {}", usage);
                     return AiResponse.builder()
                             .content(content)
                             .model((String) responseBody.get("model"))
@@ -90,13 +89,16 @@ public class MistralAgent implements AiAgent {
                 }
             }
         } catch (Exception e) {
+            log.error("Mistral API Error during chat request", e);
             return AiResponse.builder().content("Mistral API Error: " + e.getMessage()).build();
         }
+        log.warn("Mistral API returned an empty or invalid response shape");
         return AiResponse.builder().content("").build();
     }
 
     @Override
     public AiResponse transcribe(AiTranscriptionRequest request) {
+        log.warn("Mistral does not support audio transcription");
         return AiResponse.builder()
                 .content("Error: Mistral does not support audio transcription")
                 .build();

@@ -1,4 +1,4 @@
-package com.itways.assistant.ai.config;
+package com.itways.assistant.ai.service;
 
 import com.itways.assistant.ai.dto.AiChatRequest;
 import com.itways.assistant.ai.dto.AiResponse;

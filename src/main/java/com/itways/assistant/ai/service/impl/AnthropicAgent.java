@@ -1,10 +1,8 @@
-package com.itways.assistant.ai.impl;
+package com.itways.assistant.ai.service.impl;
 
-import com.itways.assistant.ai.config.AiAgent;
 import com.itways.assistant.ai.dto.AiChatRequest;
 import com.itways.assistant.ai.dto.AiResponse;
 import com.itways.assistant.ai.dto.AiTranscriptionRequest;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -17,12 +15,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@RequiredArgsConstructor
 @Slf4j
-public class AnthropicAgent implements AiAgent {
+public class AnthropicAgent extends AbstractAiAgent {
 
-    private final String defaultApiKey;
-    private final RestTemplate restTemplate = new RestTemplate();
+    public AnthropicAgent(String defaultApiKey, org.springframework.web.client.RestTemplate restTemplate) {
+        super(defaultApiKey, restTemplate);
+    }
 
     private static final String ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
     private static final String DEFAULT_MODEL = "claude-sonnet-3.5";
@@ -35,11 +33,11 @@ public class AnthropicAgent implements AiAgent {
 
     @Override
     public AiResponse chat(AiChatRequest request) {
-        log.info("active model: {}", DEFAULT_MODEL);
-        String effectiveApiKey = (request.getConfig() != null && request.getConfig().getApiKey() != null)
-                ? request.getConfig().getApiKey()
-                : defaultApiKey;
-        if (effectiveApiKey == null || effectiveApiKey.isEmpty()) {
+        log.info("Processing chat request for Claude, model: {}",
+                request.getModel() != null ? request.getModel() : DEFAULT_MODEL);
+        String effectiveApiKey = getEffectiveApiKey(request);
+        if (effectiveApiKey.isEmpty()) {
+            log.error("Claude API Key missing");
             return AiResponse.builder().content("Error: Claude API Key missing").build();
         }
 
@@ -51,7 +49,8 @@ public class AnthropicAgent implements AiAgent {
         Map<String, Object> body = new HashMap<>();
         body.put("model", request.getModel() != null ? request.getModel() : DEFAULT_MODEL);
         body.put("messages", request.getMessages().stream()
-                .map(m -> Map.of("role", m.getRole().equals("system") ? "user" : m.getRole(), "content", m.getContent()))
+                .map(m -> Map.of("role", m.getRole().equals("system") ? "user" : m.getRole(), "content",
+                        m.getContent()))
                 .collect(Collectors.toList()));
         body.put("max_tokens", request.getMaxTokens() != null ? request.getMaxTokens() : 4096);
         if (request.getTemperature() != null) {
@@ -76,6 +75,7 @@ public class AnthropicAgent implements AiAgent {
                                 (Integer) usageMap.get("input_tokens") + (Integer) usageMap.get("output_tokens"));
                     }
 
+                    log.debug("Claude API call successful, usage: {}", usage);
                     return AiResponse.builder()
                             .content(text)
                             .model((String) responseBody.get("model"))
@@ -84,13 +84,16 @@ public class AnthropicAgent implements AiAgent {
                 }
             }
         } catch (Exception e) {
+            log.error("Claude API Error during chat request", e);
             return AiResponse.builder().content("Claude API Error: " + e.getMessage()).build();
         }
+        log.warn("Claude API returned an empty or invalid response shape");
         return AiResponse.builder().content("").build();
     }
 
     @Override
     public AiResponse transcribe(AiTranscriptionRequest request) {
+        log.warn("Claude does not support audio transcription");
         return AiResponse.builder()
                 .content("Error: Claude does not support audio transcription")
                 .build();
