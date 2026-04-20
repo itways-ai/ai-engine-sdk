@@ -18,22 +18,27 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class AiService {
 
-	private final AiAgent defaultAiAgent;
-
 	@Autowired
 	@Qualifier("aiAgents")
 	private final Map<String, AiAgent> aiAgents;
 
-	private AiAgent getAgent(String provider) {
-		if (provider != null && aiAgents.containsKey(provider.toUpperCase())) {
-			return aiAgents.get(provider.toUpperCase());
-		}
-		return defaultAiAgent;
-	}
+//	private AiAgent getAgent(String provider) {
+//		if (provider != null && aiAgents.containsKey(provider.toUpperCase())) {
+//			return aiAgents.get(provider.toUpperCase());
+//		}
+//		return defaultAiAgent;
+//	}
 
 	public AiResponse chat(AiChatRequest request) {
+		// determine provider from the config we injected in speech-service
 		String provider = request.getConfig() != null ? request.getConfig().getProvider() : null;
-		AiAgent agent = getAgent(provider);
+		if(provider == null){
+			throw new IllegalArgumentException("No AI provider specified in the Request Config");
+		}
+		AiAgent agent = aiAgents.get(provider.toUpperCase());
+		if(agent == null){
+			throw new IllegalArgumentException("provider " + provider + " is not supported");
+		}
 		log.info("Processing chat request using agent: {}", agent.getProvider());
 		log.debug("Chat request payload size: {} messages", request.getMessages() != null ? request.getMessages().size() : 0);
 		AiResponse response = agent.chat(request);
@@ -43,7 +48,13 @@ public class AiService {
 
 	public AiResponse transcribe(AiTranscriptionRequest request) {
 		String provider = request.getConfig() != null ? request.getConfig().getProvider() : null;
-		AiAgent agent = getAgent(provider);
+		if(provider == null){
+			throw new IllegalArgumentException("No AI provider specified in the Request Config");
+		}
+		AiAgent agent = aiAgents.get(provider.toUpperCase());
+		if(agent == null){
+			throw new IllegalArgumentException("provider " + provider + " is not supported");
+		}
 		log.info("Processing transcription request using agent: {}", agent.getProvider());
 		AiResponse response = agent.transcribe(request);
 		log.info("Transcription request completed successfully with agent: {}", agent.getProvider());

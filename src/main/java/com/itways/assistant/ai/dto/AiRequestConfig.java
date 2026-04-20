@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AiRequestConfig {
+    // TODO -- this will be retrieved from account service
     private String apiKey;
     private String provider;
     private Map<String, Object> additionalInfo;
