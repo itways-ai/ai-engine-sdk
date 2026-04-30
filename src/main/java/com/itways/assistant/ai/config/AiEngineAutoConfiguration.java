@@ -31,24 +31,6 @@ import javax.net.ssl.SSLContext;
 @ComponentScan("com.itways.assistant.ai")
 public class AiEngineAutoConfiguration {
 
-	@Value("${ai.groq.api-key:}")
-	private String groqApiKey;
-
-	@Value("${ai.openai.api-key:}")
-	private String openAiApiKey;
-
-	@Value("${ai.claude.api-key:}")
-	private String claudeApiKey;
-
-	@Value("${ai.gemini.api-key:}")
-	private String geminiApiKey;
-
-	@Value("${ai.mistral.api-key:}")
-	private String mistralApiKey;
-
-	@Value("${ai.active-provider:GROQ}")
-	private String activeProvider;
-
 	@PostConstruct
 	public void print() {
 		log.info("✅ AI SDK configuration initialized");
@@ -88,38 +70,32 @@ public class AiEngineAutoConfiguration {
 
 	@Bean
 	public GroqAgent groqAgent() {
-		return new GroqAgent(groqApiKey, aiRestTemplate());
+		return new GroqAgent(null, aiRestTemplate());
 	}
 
 	@Bean
 	public OpenAiAgent openAiAgent() {
-		return new OpenAiAgent(openAiApiKey, aiRestTemplate());
+		return new OpenAiAgent(null, aiRestTemplate());
 	}
 
 	@Bean
 	public AnthropicAgent claudeAgent() {
-		return new AnthropicAgent(claudeApiKey, aiRestTemplate());
+		return new AnthropicAgent(null, aiRestTemplate());
 	}
 
 	@Bean
 	public GeminiAgent geminiAgent() {
-		return new GeminiAgent(geminiApiKey, aiRestTemplate());
+		return new GeminiAgent(null, aiRestTemplate());
 	}
 
 	@Bean
 	public MistralAgent mistralAgent() {
-		return new MistralAgent(mistralApiKey, aiRestTemplate());
+		return new MistralAgent(null, aiRestTemplate());
 	}
 
 	@Bean
 	public Map<String, AiAgent> aiAgents(List<AiAgent> agentList) {
 		return agentList.stream().collect(
 				Collectors.toMap(AiAgent::getProvider, Function.identity(), (existing, replacement) -> existing));
-	}
-
-	@Bean
-	@Primary
-	public AiAgent activeAiAgent(Map<String, AiAgent> agents) {
-		return agents.getOrDefault(activeProvider.toUpperCase(), agents.values().iterator().next());
 	}
 }
