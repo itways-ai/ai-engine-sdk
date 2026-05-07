@@ -1,16 +1,14 @@
-name: Publish to GitHub Packages
+name: Validate Build on Tag
 
 on:
   push:
-    branches: [ main ]
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
 
     steps:
       - name: Checkout
@@ -21,9 +19,6 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          server-id: github
-          server-username: GITHUB_ACTOR
-          server-password: GITHUB_TOKEN
 
       - name: Cache Maven packages
         uses: actions/cache@v4
@@ -32,7 +27,14 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-maven-
 
-      - name: Publish package
-        run: mvn --batch-mode deploy -DskipTests
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and verify
+        run: mvn --batch-mode verify -DskipTests
+
+      - name: Summary
+        run: |
+          echo "✅ Tag ${{ github.ref_name }} is ready."
+          echo "JitPack will build and serve this version automatically on first request."
+          echo "Dependency to use:"
+          echo "  <groupId>com.github.itways-ai</groupId>"
+          echo "  <artifactId>ai-engine-sdk</artifactId>"
+          echo "  <version>${{ github.ref_name }}</version>"
