@@ -1,6 +1,8 @@
 package com.itways.assistant.ai.service.impl;
 
 import com.itways.assistant.ai.dto.AiChatRequest;
+import com.itways.assistant.ai.dto.AiEmbeddingRequest;
+import com.itways.assistant.ai.dto.AiEmbeddingResponse;
 import com.itways.assistant.ai.dto.AiResponse;
 import com.itways.assistant.ai.dto.AiTranscriptionRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +28,9 @@ public class GeminiAgent extends AbstractAiAgent {
     //  gemini-2.5-flash-lite fastest
 
     private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+    private static final String GEMINI_EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:embedContent?key={apiKey}";
     private static final String DEFAULT_MODEL = "gemini-2.5-flash-lite";
+    private static final String DEFAULT_EMBEDDING_MODEL = "gemini-embedding-001";
 
     @Override
     public String getProvider() {
@@ -107,5 +111,53 @@ public class GeminiAgent extends AbstractAiAgent {
         return AiResponse.builder()
                 .content("Error: Gemini does not support audio transcription via this SDK")
                 .build();
+    }
+
+    @Override
+    public AiEmbeddingResponse embed(AiEmbeddingRequest request) {
+        String model = request.getModel() != null ? request.getModel() : DEFAULT_EMBEDDING_MODEL;
+        log.info("Processing embedding request for Gemini, model: {}", model);
+
+        String effectiveApiKey = getEffectiveApiKey(request);
+        if (effectiveApiKey.isEmpty()) {
+            log.error("Gemini API Key missing for embedding");
+            throw new IllegalStateException("Gemini API Key missing");
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("model", "models/" + model);   // must be prefixed with "models/"
+        body.put("content", Map.of("parts", List.of(Map.of("text", request.getInput()))));
+        body.put("outputDimensionality", 768);  // explicitly request 768 dims
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+        try {
+            String url = GEMINI_EMBEDDING_URL
+                    .replace("{model}", model)
+                    .replace("{apiKey}", effectiveApiKey);
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+            Map<String, Object> responseBody = response.getBody();
+            if (responseBody != null) {
+                Map<String, Object> embedding = (Map<String, Object>) responseBody.get("embedding");
+                if (embedding != null) {
+                    List<Double> rawVector = (List<Double>) embedding.get("values");
+                    float[] vector = new float[rawVector.size()];
+                    for (int i = 0; i < rawVector.size(); i++) {
+                        vector[i] = rawVector.get(i).floatValue();
+                    }
+                    log.debug("Gemini embedding successful, dimensions: {}", vector.length);
+                    return AiEmbeddingResponse.builder()
+                            .vector(vector)
+                            .model(model)
+                            .build();
+                }
+            }
+        } catch (Exception e) {
+            log.error("Gemini Embedding API Error", e);
+            throw new RuntimeException("Gemini Embedding failed: " + e.getMessage(), e);
+        }
+        throw new RuntimeException("Gemini Embedding returned empty response");
     }
 }
