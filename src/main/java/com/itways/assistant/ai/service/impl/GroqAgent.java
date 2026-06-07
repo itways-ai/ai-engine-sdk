@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.itways.assistant.ai.dto.*;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -17,12 +18,6 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-
-import com.itways.assistant.ai.dto.AiChatRequest;
-import com.itways.assistant.ai.dto.AiMessage;
-import com.itways.assistant.ai.dto.AiResponse;
-import com.itways.assistant.ai.dto.AiTranscriptionRequest;
-import com.itways.assistant.ai.dto.AiWrappedFile;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -96,6 +91,11 @@ public class GroqAgent extends AbstractAiAgent {
 			log.error("Error calling Groq Transcription API", e);
 			return errorResponse("Error calling Groq: " + e.getMessage());
 		}
+	}
+
+	@Override
+	public List<AiEmbeddingResponse> embedBatch(List<AiEmbeddingRequest> requests) {
+		return List.of();
 	}
 
 	// -------------------------------------------------------------------------

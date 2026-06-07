@@ -1,8 +1,6 @@
 package com.itways.assistant.ai.service.impl;
 
-import com.itways.assistant.ai.dto.AiChatRequest;
-import com.itways.assistant.ai.dto.AiResponse;
-import com.itways.assistant.ai.dto.AiTranscriptionRequest;
+import com.itways.assistant.ai.dto.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -102,5 +100,10 @@ public class MistralAgent extends AbstractAiAgent {
         return AiResponse.builder()
                 .content("Error: Mistral does not support audio transcription")
                 .build();
+    }
+
+    @Override
+    public List<AiEmbeddingResponse> embedBatch(List<AiEmbeddingRequest> requests) {
+        return List.of();
     }
 }

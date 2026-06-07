@@ -209,4 +209,9 @@ public class OpenAiAgent extends AbstractAiAgent {
         }
         throw new RuntimeException("OpenAI Embedding returned empty response");
     }
+
+    @Override
+    public List<AiEmbeddingResponse> embedBatch(List<AiEmbeddingRequest> requests) {
+        return List.of();
+    }
 }
