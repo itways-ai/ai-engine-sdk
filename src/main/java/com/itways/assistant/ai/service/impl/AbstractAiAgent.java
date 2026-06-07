@@ -1,5 +1,7 @@
 package com.itways.assistant.ai.service.impl;
 
+import com.itways.assistant.ai.dto.AiEmbeddingRequest;
+import com.itways.assistant.ai.dto.AiEmbeddingResponse;
 import com.itways.assistant.ai.dto.BaseAiRequest;
 import com.itways.assistant.ai.service.AiAgent;
 
@@ -23,9 +25,6 @@ public abstract class AbstractAiAgent implements AiAgent {
      * Resolves the effective API key by prioritizing the override key specified
      * in the runtime request config. If none provided, falls back to the default
      * application key configured in the context.
-     *
-     * @param request The AI request (chat or transcription)
-     * @return The effective API key, never null (returns empty string if none found).
      */
     protected String getEffectiveApiKey(BaseAiRequest request) {
         if (request != null && request.getConfig() != null) {
@@ -35,5 +34,15 @@ public abstract class AbstractAiAgent implements AiAgent {
             }
         }
         return defaultApiKey != null ? defaultApiKey : "";
+    }
+
+    /**
+     * Default implementation — providers that don't support embeddings
+     * (Groq, Anthropic, Mistral) will throw this. Override in OpenAiAgent/GeminiAgent.
+     */
+    @Override
+    public AiEmbeddingResponse embed(AiEmbeddingRequest request) {
+        throw new UnsupportedOperationException(
+                getProvider() + " does not support text embeddings via this SDK");
     }
 }

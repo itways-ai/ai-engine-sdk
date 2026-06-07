@@ -15,6 +15,8 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import com.itways.assistant.ai.dto.AiChatRequest;
+import com.itways.assistant.ai.dto.AiEmbeddingRequest;
+import com.itways.assistant.ai.dto.AiEmbeddingResponse;
 import com.itways.assistant.ai.dto.AiResponse;
 import com.itways.assistant.ai.dto.AiTranscriptionRequest;
 
@@ -33,11 +35,13 @@ public class OpenAiAgent extends AbstractAiAgent {
 
     private static final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
     private static final String OPENAI_SPEECH_URL = "https://api.openai.com/v1/audio/transcriptions";
+    private static final String OPENAI_EMBEDDING_URL = "https://api.openai.com/v1/embeddings";
     // available models
     // gpt-5-nano
     // gpt-4o
     private static final String DEFAULT_CHAT_MODEL = "gpt-4o";
     private static final String DEFAULT_WHISPER_MODEL = "whisper-1";
+    private static final String DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
 
     @Override
     public String getProvider() {
@@ -159,5 +163,55 @@ public class OpenAiAgent extends AbstractAiAgent {
     @AllArgsConstructor
     private static class OpenAIResponse {
         private String text;
+    }
+
+    @Override
+    public AiEmbeddingResponse embed(AiEmbeddingRequest request) {
+        String model = request.getModel() != null ? request.getModel() : DEFAULT_EMBEDDING_MODEL;
+        log.info("Processing embedding request for OpenAI, model: {}", model);
+
+        String effectiveApiKey = getEffectiveApiKey(request);
+        if (effectiveApiKey.isEmpty()) {
+            log.error("OpenAI API Key missing for embedding");
+            throw new IllegalStateException("OpenAI API Key missing");
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(effectiveApiKey);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("model", model);
+        body.put("input", request.getInput());
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+        try {
+            ResponseEntity<Map> response = restTemplate.postForEntity(OPENAI_EMBEDDING_URL, entity, Map.class);
+            Map<String, Object> responseBody = response.getBody();
+            if (responseBody != null) {
+                List<Map<String, Object>> data = (List<Map<String, Object>>) responseBody.get("data");
+                if (data != null && !data.isEmpty()) {
+                    List<Double> rawVector = (List<Double>) data.get(0).get("embedding");
+                    float[] vector = new float[rawVector.size()];
+                    for (int i = 0; i < rawVector.size(); i++) {
+                        vector[i] = rawVector.get(i).floatValue();
+                    }
+                    log.debug("OpenAI embedding successful, dimensions: {}", vector.length);
+                    return AiEmbeddingResponse.builder()
+                            .vector(vector)
+                            .model(model)
+                            .build();
+                }
+            }
+        } catch (Exception e) {
+            log.error("OpenAI Embedding API Error", e);
+            throw new RuntimeException("OpenAI Embedding failed: " + e.getMessage(), e);
+        }
+        throw new RuntimeException("OpenAI Embedding returned empty response");
+    }
+
+    @Override
+    public List<AiEmbeddingResponse> embedBatch(List<AiEmbeddingRequest> requests) {
+        return List.of();
     }
 }
