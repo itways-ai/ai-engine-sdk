@@ -20,16 +20,6 @@ public interface AiAgent {
     AiResponse transcribe(AiTranscriptionRequest request);
 
     /**
-     * Generates an embedding vector for the given text.
-     */
-    AiEmbeddingResponse embed(AiEmbeddingRequest request);
-
-    /**
-     * Generates a batch of embedding vectors using native DTO models.
-     */
-    List<AiEmbeddingResponse> embedBatch(List<AiEmbeddingRequest> requests);
-
-    /**
      * Returns the provider name (e.g., "GROQ", "OPENAI").
      */
     String getProvider();

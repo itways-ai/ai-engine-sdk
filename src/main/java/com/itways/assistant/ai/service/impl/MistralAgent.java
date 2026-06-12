@@ -102,8 +102,4 @@ public class MistralAgent extends AbstractAiAgent {
                 .build();
     }
 
-    @Override
-    public List<AiEmbeddingResponse> embedBatch(List<AiEmbeddingRequest> requests) {
-        return List.of();
-    }
 }

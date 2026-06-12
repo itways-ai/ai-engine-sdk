@@ -35,14 +35,4 @@ public abstract class AbstractAiAgent implements AiAgent {
         }
         return defaultApiKey != null ? defaultApiKey : "";
     }
-
-    /**
-     * Default implementation — providers that don't support embeddings
-     * (Groq, Anthropic, Mistral) will throw this. Override in OpenAiAgent/GeminiAgent.
-     */
-    @Override
-    public AiEmbeddingResponse embed(AiEmbeddingRequest request) {
-        throw new UnsupportedOperationException(
-                getProvider() + " does not support text embeddings via this SDK");
-    }
 }
