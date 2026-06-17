@@ -16,14 +16,14 @@ import java.util.stream.Collectors;
 public class LocalEmbeddingEngine {
 
     private final EmbeddingModel embeddingModel;
-
+    private static final String MODEL = "bge-m3";
     private static final int INTERNAL_MINI_BATCH_SIZE = 32;
 
     public LocalEmbeddingEngine() {
         log.info("🧠 Connecting to local Ollama instance inside Docker space...");
         this.embeddingModel = OllamaEmbeddingModel.builder()
                 .baseUrl("http://localhost:11434")
-                .modelName("nomic-embed-text")
+                .modelName(MODEL)
                 .build();
 
         log.info("✅ Ollama Multilingual embedding model bound successfully (768 Dimensions).");
