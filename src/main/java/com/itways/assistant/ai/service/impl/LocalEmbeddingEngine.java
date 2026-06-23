@@ -16,7 +16,8 @@ import java.util.stream.Collectors;
 public class LocalEmbeddingEngine {
 
     private final EmbeddingModel embeddingModel;
-    private static final String MODEL = "bge-m3";
+//    private static final String MODEL = "bge-m3";
+    private static final String MODEL = "granite-embedding:278m";
     private static final int INTERNAL_MINI_BATCH_SIZE = 32;
 
     public LocalEmbeddingEngine() {
