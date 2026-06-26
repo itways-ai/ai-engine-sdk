@@ -6,7 +6,6 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.List;
@@ -97,8 +96,4 @@ public class AnthropicAgent extends AbstractAiAgent {
                 .build();
     }
 
-    @Override
-    public List<AiEmbeddingResponse> embedBatch(List<AiEmbeddingRequest> requests) {
-        return List.of();
-    }
 }

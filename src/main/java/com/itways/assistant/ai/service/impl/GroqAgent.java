@@ -13,7 +13,6 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClientException;
@@ -30,7 +29,6 @@ import lombok.extern.slf4j.Slf4j;
  * issues in restrictive environments.
  */
 @Slf4j
-@Data
 public class GroqAgent extends AbstractAiAgent {
 
 	private static final String GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -91,11 +89,6 @@ public class GroqAgent extends AbstractAiAgent {
 			log.error("Error calling Groq Transcription API", e);
 			return errorResponse("Error calling Groq: " + e.getMessage());
 		}
-	}
-
-	@Override
-	public List<AiEmbeddingResponse> embedBatch(List<AiEmbeddingRequest> requests) {
-		return List.of();
 	}
 
 	// -------------------------------------------------------------------------
