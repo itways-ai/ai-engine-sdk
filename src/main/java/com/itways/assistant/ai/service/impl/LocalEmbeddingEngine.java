@@ -8,97 +8,133 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Component // Pure Spring utility component, not Ai agent
 public class LocalEmbeddingEngine {
 
-    private final EmbeddingModel embeddingModel;
-//    private static final String MODEL = "bge-m3";
-    private static final String MODEL = "granite-embedding:278m";
+    private static final String OLLAMA_BASE_URL = "http://localhost:11434";
+    private static final String DEFAULT_MODEL = "granite-embedding:278m";
     private static final int INTERNAL_MINI_BATCH_SIZE = 32;
 
-    public LocalEmbeddingEngine() {
-        log.info("🧠 Connecting to local Ollama instance inside Docker space...");
-        this.embeddingModel = OllamaEmbeddingModel.builder()
-                .baseUrl("http://localhost:11434")
-                .modelName(MODEL)
-                .build();
+    private final Map<String, EmbeddingModelSpec> supportedModels = new LinkedHashMap<>();
+    private final Map<String, EmbeddingModel> modelCache = new ConcurrentHashMap<>();
 
-        log.info("✅ Ollama Multilingual embedding model bound successfully (768 Dimensions).");
+    public LocalEmbeddingEngine() {
+        supportedModels.put("granite-embedding:278m", new EmbeddingModelSpec("granite-embedding:278m", 768));
+        supportedModels.put("bge-m3", new EmbeddingModelSpec("bge-m3", 1024));
+        supportedModels.put("nomic-embed-text", new EmbeddingModelSpec("nomic-embed-text", 768));
+
+        log.info("Local Ollama embedding engine ready. defaultModel={}, supportedModels={}",
+                DEFAULT_MODEL, supportedModels.keySet());
     }
 
     /**
-     * Generates a 768-dimensional float vector for a single query.
+     * Generates a vector for a single query using the default embedding model.
      */
     public float[] embed(String text) {
+        return embed(text, DEFAULT_MODEL);
+    }
+
+    /**
+     * Generates a vector for a single query using the selected embedding model.
+     */
+    public float[] embed(String text, String modelName) {
         if (text == null || text.isBlank()) {
             throw new IllegalArgumentException("Input text cannot be null or blank");
         }
-        return embeddingModel.embed(text).content().vector();
+        return modelFor(modelName).embed(text).content().vector();
     }
 
-//    public List<float[]> embedBatch(List<String> texts) {
-//        if (texts == null || texts.isEmpty()) return List.of();
-//
-//        long startTime = System.currentTimeMillis();
-//
-//        // 1. Convert raw strings into LangChain4j TextSegments
-//        List<TextSegment> segments = texts.stream()
-//                .map(TextSegment::from)
-//                .collect(Collectors.toList());
-//
-//        log.info("🚀 Passing batch of {} segments directly to local ONNX matrix engine...", segments.size());
-//
-//        // 2. Execute vector transformations simultaneously using parallel CPU threads
-//        List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
-//
-//        // Extract float vector layouts backout
-//        List<float[]> vectors = embeddings.stream()
-//                .map(Embedding::vector)
-//                .collect(Collectors.toList());
-//
-//        log.info("⚡ Native batch inference completed in {}ms total for {} items",
-//                (System.currentTimeMillis() - startTime), texts.size());
-//
-//        return vectors;
-//    }
     /**
-     * Bulk processing pipeline using safe sequential mini-batches
-     * to pipe raw data arrays smoothly to the Docker network container.
+     * Bulk processing pipeline using safe sequential mini-batches with the default model.
      */
-    public List<float[]> embedBatch(List<String> texts){
-        if(texts == null || texts.isEmpty()){
+    public List<float[]> embedBatch(List<String> texts) {
+        return embedBatch(texts, DEFAULT_MODEL);
+    }
+
+    /**
+     * Bulk processing pipeline using safe sequential mini-batches with the selected model.
+     */
+    public List<float[]> embedBatch(List<String> texts, String modelName) {
+        if (texts == null || texts.isEmpty()) {
             return List.of();
         }
+
+        EmbeddingModelSpec spec = getModelSpec(modelName);
+        EmbeddingModel embeddingModel = modelFor(spec.name());
 
         long startTime = System.currentTimeMillis();
         List<float[]> allVectors = new ArrayList<>(texts.size());
 
-        log.info("🚀 Processing batch of {} items using internal mini-batches of {}...",
-                texts.size(), INTERNAL_MINI_BATCH_SIZE);
+        log.info("Processing batch of {} items with model='{}' dimensions={} using mini-batches of {}",
+                texts.size(), spec.name(), spec.dimension(), INTERNAL_MINI_BATCH_SIZE);
 
-        // Slice into optimized internal windows (e.g., 32 at a time)
-        for(int i = 0; i < texts.size(); i += INTERNAL_MINI_BATCH_SIZE){
-            List<String> subList = texts.subList(i,Math.min(i + INTERNAL_MINI_BATCH_SIZE, texts.size()));
+        for (int i = 0; i < texts.size(); i += INTERNAL_MINI_BATCH_SIZE) {
+            List<String> subList = texts.subList(i, Math.min(i + INTERNAL_MINI_BATCH_SIZE, texts.size()));
 
-            // 1. Map sublist to textSegments
             List<TextSegment> segments = subList.stream()
                     .map(TextSegment::from)
                     .collect(Collectors.toList());
 
-            // Run bulk native model processing inside the container environment
             List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
 
-            // 3. collect vectors
-            for(Embedding embedding : embeddings){
+            for (Embedding embedding : embeddings) {
                 allVectors.add(embedding.vector());
             }
         }
-        log.info("⚡ Optimized local batch inference completed in {}ms total for {} items",
-                (System.currentTimeMillis() - startTime), texts.size());
+
+        log.info("Local batch inference completed in {}ms total for {} items with model='{}'",
+                (System.currentTimeMillis() - startTime), texts.size(), spec.name());
         return allVectors;
+    }
+
+    public String getDefaultModelName() {
+        return DEFAULT_MODEL;
+    }
+
+    public int getDimension(String modelName) {
+        return getModelSpec(modelName).dimension();
+    }
+
+    public boolean isSupportedModel(String modelName) {
+        return modelName != null && supportedModels.containsKey(modelName.trim());
+    }
+
+    public List<EmbeddingModelSpec> getSupportedModels() {
+        return List.copyOf(supportedModels.values());
+    }
+
+    private EmbeddingModel modelFor(String modelName) {
+        EmbeddingModelSpec spec = getModelSpec(modelName);
+        return modelCache.computeIfAbsent(spec.name(), this::buildOllamaModel);
+    }
+
+    private EmbeddingModel buildOllamaModel(String modelName) {
+        log.info("Connecting to local Ollama embedding model '{}'", modelName);
+        return OllamaEmbeddingModel.builder()
+                .baseUrl(OLLAMA_BASE_URL)
+                .modelName(modelName)
+                .build();
+    }
+
+    private EmbeddingModelSpec getModelSpec(String modelName) {
+        String resolvedModelName = (modelName == null || modelName.isBlank())
+                ? DEFAULT_MODEL
+                : modelName.trim();
+
+        EmbeddingModelSpec spec = supportedModels.get(resolvedModelName);
+        if (spec == null) {
+            throw new IllegalArgumentException("Unsupported embedding model: " + resolvedModelName);
+        }
+        return spec;
+    }
+
+    public record EmbeddingModelSpec(String name, int dimension) {
     }
 }
