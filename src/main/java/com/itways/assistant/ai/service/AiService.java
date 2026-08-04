@@ -57,7 +57,8 @@ public class AiService {
 		}
 		log.info("Processing transcription request using agent: {}", agent.getProvider());
 		AiResponse response = agent.transcribe(request);
-		log.info("Transcription request completed successfully with agent: {}", agent.getProvider());
+		log.info("Transcription completed with agent: {} transcript=\"{}\"",
+				agent.getProvider(), response.getContent());
 		return response;
 	}
 }
