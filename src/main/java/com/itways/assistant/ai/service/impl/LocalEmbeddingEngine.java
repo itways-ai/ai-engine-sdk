@@ -5,6 +5,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -20,10 +21,21 @@ public class LocalEmbeddingEngine {
     private static final String MODEL = "granite-embedding:278m";
     private static final int INTERNAL_MINI_BATCH_SIZE = 32;
 
-    public LocalEmbeddingEngine() {
-        log.info("🧠 Connecting to local Ollama instance inside Docker space...");
+    /**
+     * Ollama's address, overridable per deployment.
+     *
+     * <p>
+     * The default is the hard-coded value this used to carry, so nothing changes
+     * for anything already running. It became a property once a second caller
+     * appeared: the knowledge base runs wherever speech-service runs, but intent
+     * embeddings are computed on the same trip as a classification, and a host
+     * that is right for one deployment is not necessarily right for the next.
+     */
+    public LocalEmbeddingEngine(
+            @Value("${ai.embedding.ollama-url:http://localhost:11434}") String baseUrl) {
+        log.info("🧠 Connecting to Ollama at {}...", baseUrl);
         this.embeddingModel = OllamaEmbeddingModel.builder()
-                .baseUrl("http://localhost:11434")
+                .baseUrl(baseUrl)
                 .modelName(MODEL)
                 .build();
 
