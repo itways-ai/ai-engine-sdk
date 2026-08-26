@@ -27,7 +27,7 @@ public class LocalEmbeddingEngine {
      * <p>
      * The default is the hard-coded value this used to carry, so nothing changes
      * for anything already running. It became a property once a second caller
-     * appeared: the knowledge base runs wherever speech-service runs, but intent
+     * appeared: the knowledge base runs wherever assistant-service runs, but intent
      * embeddings are computed on the same trip as a classification, and a host
      * that is right for one deployment is not necessarily right for the next.
      */

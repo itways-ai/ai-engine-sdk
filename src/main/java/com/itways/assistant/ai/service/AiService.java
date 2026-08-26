@@ -30,7 +30,7 @@ public class AiService {
 //	}
 
 	public AiResponse chat(AiChatRequest request) {
-		// determine provider from the config we injected in speech-service
+		// determine provider from the config we injected in assistant-service
 		String provider = request.getConfig() != null ? request.getConfig().getProvider() : null;
 		if(provider == null){
 			throw new IllegalArgumentException("No AI provider specified in the Request Config");
