@@ -26,7 +26,7 @@ public class GeminiAgent extends AbstractAiAgent {
     //  gemini-2.5-flash-lite fastest
 
     private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
-    private static final String DEFAULT_MODEL = "gemini-2.5-flash-lite";
+    private static final String DEFAULT_MODEL = "gemini-3.5-flash-lite";
 //    private static final String DEFAULT_EMBEDDING_MODEL = "gemini-embedding-001";
 //    private static final String GEMINI_BATCH_EMBED_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:batchEmbedContents?key={apiKey}";
 //    private static final String GEMINI_EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:embedContent?key={apiKey}";
@@ -37,7 +37,7 @@ public class GeminiAgent extends AbstractAiAgent {
     }
     @Override
     public AiResponse chat(AiChatRequest request) {
-        String model = request.getModel() != null ? request.getModel() : DEFAULT_MODEL;
+        String model = getEffectiveModel(request.getModel(), request, DEFAULT_MODEL);
         log.info("Processing chat request for Gemini, model: {}", model);
 
         String effectiveApiKey = getEffectiveApiKey(request);

@@ -51,7 +51,7 @@ public class OpenAiAgent extends AbstractAiAgent {
     @Override
     public AiResponse chat(AiChatRequest request) {
         log.info("Processing chat request for OpenAI, model: {}",
-                request.getModel() != null ? request.getModel() : DEFAULT_CHAT_MODEL);
+                getEffectiveModel(request.getModel(), request, DEFAULT_CHAT_MODEL));
         String effectiveApiKey = getEffectiveApiKey(request);
         if (effectiveApiKey.isEmpty()) {
             log.error("OpenAI API Key missing");
@@ -63,7 +63,7 @@ public class OpenAiAgent extends AbstractAiAgent {
         headers.setBearerAuth(effectiveApiKey);
 
         Map<String, Object> body = new HashMap<>();
-        body.put("model", request.getModel() != null ? request.getModel() : DEFAULT_CHAT_MODEL);
+        body.put("model", getEffectiveModel(request.getModel(), request, DEFAULT_CHAT_MODEL));
         body.put("messages", request.getMessages().stream()
                 .map(m -> Map.of("role", m.getRole(), "content", m.getContent()))
                 .collect(Collectors.toList()));

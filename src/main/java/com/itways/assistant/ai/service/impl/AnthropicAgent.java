@@ -31,7 +31,7 @@ public class AnthropicAgent extends AbstractAiAgent {
     @Override
     public AiResponse chat(AiChatRequest request) {
         log.info("Processing chat request for Claude, model: {}",
-                request.getModel() != null ? request.getModel() : DEFAULT_MODEL);
+                getEffectiveModel(request.getModel(), request, DEFAULT_MODEL));
         String effectiveApiKey = getEffectiveApiKey(request);
         if (effectiveApiKey.isEmpty()) {
             log.error("Claude API Key missing");
@@ -44,7 +44,7 @@ public class AnthropicAgent extends AbstractAiAgent {
         headers.set("anthropic-version", ANTHROPIC_VERSION);
 
         Map<String, Object> body = new HashMap<>();
-        body.put("model", request.getModel() != null ? request.getModel() : DEFAULT_MODEL);
+        body.put("model", getEffectiveModel(request.getModel(), request, DEFAULT_MODEL));
         body.put("messages", request.getMessages().stream()
                 .map(m -> Map.of("role", m.getRole().equals("system") ? "user" : m.getRole(), "content",
                         m.getContent()))

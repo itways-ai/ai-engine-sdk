@@ -33,7 +33,10 @@ public class GroqAgent extends AbstractAiAgent {
 
 	private static final String GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
 	private static final String GROQ_TRANSCRIPTION_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
-	private static final String DEFAULT_CHAT_MODEL = "llama-3.3-70b-versatile";
+	// Groq retired the Llama line; both names this agent used to hard-code are gone
+	// from the lineup. A default is a last resort — accounts should configure a model —
+	// but a dead one turns "no model configured" into an unexplained 404.
+	private static final String DEFAULT_CHAT_MODEL = "openai/gpt-oss-120b";
 	private static final String DEFAULT_WHISPER_MODEL = "whisper-large-v3";
 	private static final int TIMEOUT_MS = 60000;
 
@@ -48,7 +51,7 @@ public class GroqAgent extends AbstractAiAgent {
 
 	@Override
 	public AiResponse chat(AiChatRequest request) {
-		String model = request.getModel() != null ? request.getModel() : DEFAULT_CHAT_MODEL;
+		String model = getEffectiveModel(request.getModel(), request, DEFAULT_CHAT_MODEL);
 		log.info("Processing chat request for Groq, model: {}", model);
 		String apiKey = getEffectiveApiKey(request);
 		if (apiKey.isEmpty()) {
@@ -115,11 +118,16 @@ public class GroqAgent extends AbstractAiAgent {
 		boolean hasImages = request.getFiles() != null && request.getFiles().stream()
 				.anyMatch(f -> f.getMimeType() != null && f.getMimeType().startsWith("image/"));
 
-		String model = request.getModel();
-		if (model == null || model.isEmpty() || DEFAULT_CHAT_MODEL.equals(model)) {
-			// Switch to a vision model if images are present and no specific model was
-			// requested
-			model = hasImages ? "meta-llama/llama-4-scout-17b-16e-instruct" : DEFAULT_CHAT_MODEL;
+		String model = getEffectiveModel(request.getModel(), request, DEFAULT_CHAT_MODEL);
+		if (hasImages && DEFAULT_CHAT_MODEL.equals(model)) {
+			// Only the text default gets swapped for a vision model. A model the
+			// caller or the account actually chose is left alone, even with images
+			// attached, because overriding a deliberate choice is worse than sending
+			// images to a model that will ignore them.
+			// TODO: verify against Groq's current lineup before relying on it — the
+			// llama-4-scout name this used to carry no longer resolves, and the demo
+			// never exercises the vision path (its documents are text).
+			model = "meta-llama/llama-4-scout-17b-16e-instruct";
 		}
 
 		body.put("model", model);

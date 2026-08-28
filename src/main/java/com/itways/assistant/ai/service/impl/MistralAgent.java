@@ -35,7 +35,7 @@ public class MistralAgent extends AbstractAiAgent {
 
     @Override
     public AiResponse chat(AiChatRequest request) {
-        log.info("Processing chat request for Mistral, model: {}", request.getModel() != null ? request.getModel() : DEFAULT_MODEL);
+        log.info("Processing chat request for Mistral, model: {}", getEffectiveModel(request.getModel(), request, DEFAULT_MODEL));
 
         String effectiveApiKey = getEffectiveApiKey(request);
         if (effectiveApiKey.isEmpty()) {
@@ -48,7 +48,7 @@ public class MistralAgent extends AbstractAiAgent {
         headers.setBearerAuth(effectiveApiKey);
 
         Map<String, Object> body = new HashMap<>();
-        body.put("model", request.getModel() != null ? request.getModel() : DEFAULT_MODEL);
+        body.put("model", getEffectiveModel(request.getModel(), request, DEFAULT_MODEL));
         body.put("messages", request.getMessages().stream()
                 .map(m -> Map.of("role", m.getRole(), "content", m.getContent()))
                 .collect(Collectors.toList()));
