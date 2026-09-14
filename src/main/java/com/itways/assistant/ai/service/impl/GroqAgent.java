@@ -137,6 +137,10 @@ public class GroqAgent extends AbstractAiAgent {
 		}
 
 		body.put("messages", buildMessages(request));
+		List<Map<String, Object>> tools = OpenAiToolFormat.tools(request.getTools());
+		if (tools != null) {
+			body.put("tools", tools);
+		}
 		return body;
 	}
 
@@ -153,7 +157,7 @@ public class GroqAgent extends AbstractAiAgent {
 			if (hasFiles && isLastUserMessage) {
 				messages.add(Map.of("role", m.getRole(), "content", buildContentWithFiles(m.getContent(), files)));
 			} else {
-				messages.add(Map.of("role", m.getRole(), "content", m.getContent()));
+				messages.add(OpenAiToolFormat.message(m));
 			}
 		}
 		return messages;
@@ -211,6 +215,7 @@ public class GroqAgent extends AbstractAiAgent {
 		String content = (String) message.get("content");
 
 		return AiResponse.builder().content(content).model((String) responseBody.get("model"))
+				.toolCalls(OpenAiToolFormat.toolCalls(message))
 				.usage(parseUsage((Map<?, ?>) responseBody.get("usage"))).build();
 	}
 

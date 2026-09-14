@@ -8,6 +8,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -46,9 +48,19 @@ public class AnthropicAgent extends AbstractAiAgent {
         Map<String, Object> body = new HashMap<>();
         body.put("model", getEffectiveModel(request.getModel(), request, DEFAULT_MODEL));
         body.put("messages", request.getMessages().stream()
-                .map(m -> Map.of("role", m.getRole().equals("system") ? "user" : m.getRole(), "content",
-                        m.getContent()))
+                .map(AnthropicAgent::toMessage)
                 .collect(Collectors.toList()));
+        if (request.getTools() != null && !request.getTools().isEmpty()) {
+            List<Map<String, Object>> tools = new ArrayList<>();
+            for (com.itways.assistant.ai.dto.AiTool tool : request.getTools()) {
+                Map<String, Object> declared = new LinkedHashMap<>();
+                declared.put("name", tool.getName());
+                declared.put("description", tool.getDescription());
+                declared.put("input_schema", tool.getParameters());
+                tools.add(declared);
+            }
+            body.put("tools", tools);
+        }
         body.put("max_tokens", request.getMaxTokens() != null ? request.getMaxTokens() : 4096);
         if (request.getTemperature() != null) {
             body.put("temperature", request.getTemperature());
@@ -61,7 +73,21 @@ public class AnthropicAgent extends AbstractAiAgent {
             if (responseBody != null) {
                 List<Map<String, Object>> content = (List<Map<String, Object>>) responseBody.get("content");
                 if (content != null && !content.isEmpty()) {
-                    String text = (String) content.get(0).get("text");
+                    // Content is a list of blocks: text, and tool_use when the model
+                    // decided to call something. Reading only the first block's text
+                    // made a tool-calling reply look empty.
+                    String text = null;
+                    List<AiToolCall> toolCalls = new ArrayList<>();
+                    for (Map<String, Object> block : content) {
+                        if ("tool_use".equals(block.get("type"))) {
+                            String id = block.get("id") == null ? "call_" + toolCalls.size()
+                                    : String.valueOf(block.get("id"));
+                            toolCalls.add(AiToolCall.of(id, String.valueOf(block.get("name")),
+                                    OpenAiToolFormat.readArguments(block.get("input"))));
+                        } else if (block.get("text") instanceof String blockText && text == null) {
+                            text = blockText;
+                        }
+                    }
 
                     Map<String, Object> usageMap = (Map<String, Object>) responseBody.get("usage");
                     AiResponse.Usage usage = null;
@@ -76,6 +102,7 @@ public class AnthropicAgent extends AbstractAiAgent {
                     return AiResponse.builder()
                             .content(text)
                             .model((String) responseBody.get("model"))
+                            .toolCalls(toolCalls)
                             .usage(usage)
                             .build();
                 }
@@ -86,6 +113,38 @@ public class AnthropicAgent extends AbstractAiAgent {
         }
         log.warn("Claude API returned an empty or invalid response shape");
         return AiResponse.builder().content("").build();
+    }
+
+    /**
+     * One message as Anthropic wants it. Tool traffic rides inside the content
+     * blocks rather than in fields of its own, and a result is sent as a user
+     * turn — there is no tool role here.
+     */
+    private static Map<String, Object> toMessage(AiMessage message) {
+        if ("tool".equals(message.getRole())) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("type", "tool_result");
+            result.put("tool_use_id", message.getToolCallId());
+            result.put("content", message.getContent() == null ? "" : message.getContent());
+            return Map.of("role", "user", "content", List.of(result));
+        }
+        String role = "system".equals(message.getRole()) ? "user" : message.getRole();
+        if (message.hasToolCalls()) {
+            List<Map<String, Object>> blocks = new ArrayList<>();
+            if (message.getContent() != null && !message.getContent().isBlank()) {
+                blocks.add(Map.of("type", "text", "text", message.getContent()));
+            }
+            for (AiToolCall call : message.getToolCalls()) {
+                Map<String, Object> use = new LinkedHashMap<>();
+                use.put("type", "tool_use");
+                use.put("id", call.getId());
+                use.put("name", call.getName());
+                use.put("input", call.getArguments() == null ? Map.of() : call.getArguments());
+                blocks.add(use);
+            }
+            return Map.of("role", role, "content", blocks);
+        }
+        return Map.of("role", role, "content", message.getContent() == null ? "" : message.getContent());
     }
 
     @Override

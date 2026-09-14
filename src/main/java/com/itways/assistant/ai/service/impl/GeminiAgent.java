@@ -1,6 +1,8 @@
 package com.itways.assistant.ai.service.impl;
 
 import com.itways.assistant.ai.dto.AiChatRequest;
+import com.itways.assistant.ai.dto.AiMessage;
+import com.itways.assistant.ai.dto.AiToolCall;
 import com.itways.assistant.ai.dto.AiResponse;
 import com.itways.assistant.ai.dto.AiTranscriptionRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -51,10 +55,19 @@ public class GeminiAgent extends AbstractAiAgent {
 
         Map<String, Object> body = new HashMap<>();
         body.put("contents", request.getMessages().stream()
-                .map(m -> Map.of(
-                        "role", m.getRole().equals("assistant") ? "model" : "user",
-                        "parts", List.of(Map.of("text", m.getContent()))))
+                .map(GeminiAgent::toContent)
                 .collect(Collectors.toList()));
+        if (request.getTools() != null && !request.getTools().isEmpty()) {
+            List<Map<String, Object>> declarations = new ArrayList<>();
+            for (com.itways.assistant.ai.dto.AiTool tool : request.getTools()) {
+                Map<String, Object> declaration = new LinkedHashMap<>();
+                declaration.put("name", tool.getName());
+                declaration.put("description", tool.getDescription());
+                declaration.put("parameters", tool.getParameters());
+                declarations.add(declaration);
+            }
+            body.put("tools", List.of(Map.of("functionDeclarations", declarations)));
+        }
 
         Map<String, Object> generationConfig = new HashMap<>();
         if (request.getTemperature() != null) {
@@ -77,7 +90,25 @@ public class GeminiAgent extends AbstractAiAgent {
                 if (candidates != null && !candidates.isEmpty()) {
                     Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
                     List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
-                    String text = (String) parts.get(0).get("text");
+                    // A reply is a list of parts, and a model that decided to call
+                    // something puts a functionCall where the text would be. Reading
+                    // only parts[0].text made such a reply look empty.
+                    String text = null;
+                    List<AiToolCall> toolCalls = new ArrayList<>();
+                    for (Map<String, Object> part : parts == null ? List.<Map<String, Object>>of() : parts) {
+                        if (part.get("text") instanceof String partText && text == null) {
+                            text = partText;
+                        }
+                        if (part.get("functionCall") instanceof Map<?, ?> call) {
+                            String name = call.get("name") == null ? null : String.valueOf(call.get("name"));
+                            if (name != null) {
+                                // Gemini issues no call id; one is invented so the
+                                // conversation has the same shape as everywhere else.
+                                toolCalls.add(AiToolCall.of("call_" + toolCalls.size(), name,
+                                        OpenAiToolFormat.readArguments(call.get("args"))));
+                            }
+                        }
+                    }
 
                     Map<String, Object> usageMetadata = (Map<String, Object>) responseBody.get("usageMetadata");
                     AiResponse.Usage usage = null;
@@ -92,6 +123,7 @@ public class GeminiAgent extends AbstractAiAgent {
                     return AiResponse.builder()
                             .content(text)
                             .model(model)
+                            .toolCalls(toolCalls)
                             .usage(usage)
                             .build();
                 }
@@ -102,6 +134,33 @@ public class GeminiAgent extends AbstractAiAgent {
         }
         log.warn("Gemini API returned an empty or invalid response shape");
         return AiResponse.builder().content("").build();
+    }
+
+    /**
+     * One message as Gemini wants it. Its vocabulary differs twice over: the
+     * assistant is "model", and a tool result is matched to its call by the
+     * tool's name rather than by an id.
+     */
+    private static Map<String, Object> toContent(AiMessage message) {
+        if ("tool".equals(message.getRole())) {
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("name", message.getToolName());
+            response.put("response", Map.of("result", message.getContent() == null ? "" : message.getContent()));
+            return Map.of("role", "user", "parts", List.of(Map.of("functionResponse", response)));
+        }
+        String role = "assistant".equals(message.getRole()) ? "model" : "user";
+        if (message.hasToolCalls()) {
+            List<Map<String, Object>> parts = new ArrayList<>();
+            if (message.getContent() != null && !message.getContent().isBlank()) {
+                parts.add(Map.of("text", message.getContent()));
+            }
+            for (AiToolCall call : message.getToolCalls()) {
+                parts.add(Map.of("functionCall", Map.of("name", call.getName(),
+                        "args", call.getArguments() == null ? Map.of() : call.getArguments())));
+            }
+            return Map.of("role", role, "parts", parts);
+        }
+        return Map.of("role", role, "parts", List.of(Map.of("text", message.getContent() == null ? "" : message.getContent())));
     }
 
     @Override

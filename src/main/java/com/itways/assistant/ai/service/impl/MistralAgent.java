@@ -50,8 +50,12 @@ public class MistralAgent extends AbstractAiAgent {
         Map<String, Object> body = new HashMap<>();
         body.put("model", getEffectiveModel(request.getModel(), request, DEFAULT_MODEL));
         body.put("messages", request.getMessages().stream()
-                .map(m -> Map.of("role", m.getRole(), "content", m.getContent()))
+                .map(OpenAiToolFormat::message)
                 .collect(Collectors.toList()));
+        List<Map<String, Object>> tools = OpenAiToolFormat.tools(request.getTools());
+        if (tools != null) {
+            body.put("tools", tools);
+        }
         if (request.getTemperature() != null) {
             body.put("temperature", request.getTemperature());
         }
@@ -82,6 +86,7 @@ public class MistralAgent extends AbstractAiAgent {
                     return AiResponse.builder()
                             .content(content)
                             .model((String) responseBody.get("model"))
+                            .toolCalls(OpenAiToolFormat.toolCalls(messageObj))
                             .usage(usage)
                             .build();
                 }
