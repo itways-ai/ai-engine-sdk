@@ -43,6 +43,16 @@ public class LocalEmbeddingEngine {
     }
 
     /**
+     * Which model produces this engine's vectors. Stored next to every vector,
+     * because vectors from two models live in different spaces: compared with
+     * each other they rank by noise, so a store has to know which ones belong
+     * together — and which to recompute after the model changes.
+     */
+    public String modelId() {
+        return MODEL;
+    }
+
+    /**
      * Generates a 768-dimensional float vector for a single query.
      */
     public float[] embed(String text) {
