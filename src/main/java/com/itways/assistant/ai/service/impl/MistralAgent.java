@@ -39,8 +39,7 @@ public class MistralAgent extends AbstractAiAgent {
 
         String effectiveApiKey = getEffectiveApiKey(request);
         if (effectiveApiKey.isEmpty()) {
-            log.error("Mistral API Key missing");
-            return AiResponse.builder().content("Error: Mistral API Key missing").build();
+            return ProviderErrors.missingKey(getProvider(), "Mistral");
         }
 
         HttpHeaders headers = new HttpHeaders();
@@ -81,6 +80,10 @@ public class MistralAgent extends AbstractAiAgent {
                                 (Integer) usageMap.get("completion_tokens"),
                                 (Integer) usageMap.get("total_tokens"));
                     }
+                    String refusal = ProviderErrors.openAiRefusal(choices.get(0), messageObj);
+                    if (refusal != null) {
+                        return ProviderErrors.refused(getProvider(), refusal, (String) responseBody.get("model"), usage);
+                    }
 
                     log.debug("Mistral API call successful, usage: {}", usage);
                     return AiResponse.builder()
@@ -92,19 +95,14 @@ public class MistralAgent extends AbstractAiAgent {
                 }
             }
         } catch (Exception e) {
-            log.error("Mistral API Error during chat request", e);
-            return AiResponse.builder().content("Mistral API Error: " + e.getMessage()).build();
+            return ProviderErrors.fromException(getProvider(), e, effectiveApiKey);
         }
-        log.warn("Mistral API returned an empty or invalid response shape");
-        return AiResponse.builder().content("").build();
+        return ProviderErrors.empty(getProvider());
     }
 
     @Override
     public AiResponse transcribe(AiTranscriptionRequest request) {
-        log.warn("Mistral does not support audio transcription");
-        return AiResponse.builder()
-                .content("Error: Mistral does not support audio transcription")
-                .build();
+        return ProviderErrors.unsupported(getProvider(), "audio transcription");
     }
 
 }

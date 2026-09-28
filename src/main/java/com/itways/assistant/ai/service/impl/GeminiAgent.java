@@ -29,7 +29,9 @@ public class GeminiAgent extends AbstractAiAgent {
     // available models
     //  gemini-2.5-flash-lite fastest
 
-    private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+    // The key travels in the x-goog-api-key header, not in a ?key= query
+    // parameter: a URL ends up in exception messages, and those end up in logs.
+    static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
     private static final String DEFAULT_MODEL = "gemini-3.5-flash-lite";
 //    private static final String DEFAULT_EMBEDDING_MODEL = "gemini-embedding-001";
 //    private static final String GEMINI_BATCH_EMBED_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:batchEmbedContents?key={apiKey}";
@@ -46,12 +48,12 @@ public class GeminiAgent extends AbstractAiAgent {
 
         String effectiveApiKey = getEffectiveApiKey(request);
         if (effectiveApiKey.isEmpty()) {
-            log.error("Gemini API Key missing");
-            return AiResponse.builder().content("Error: Gemini API Key missing").build();
+            return ProviderErrors.missingKey(getProvider(), "Gemini");
         }
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("x-goog-api-key", effectiveApiKey);
 
         Map<String, Object> body = new HashMap<>();
         body.put("contents", request.getMessages().stream()
@@ -82,14 +84,31 @@ public class GeminiAgent extends AbstractAiAgent {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
         try {
-            String url = GEMINI_URL.replace("{model}", model).replace("{apiKey}", effectiveApiKey);
+            String url = GEMINI_URL.replace("{model}", model);
             ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
             Map<String, Object> responseBody = response.getBody();
             if (responseBody != null) {
+                Map<String, Object> usageMetadata = (Map<String, Object>) responseBody.get("usageMetadata");
+                AiResponse.Usage usage = null;
+                if (usageMetadata != null) {
+                    usage = new AiResponse.Usage(
+                            (Integer) usageMetadata.get("promptTokenCount"),
+                            (Integer) usageMetadata.get("candidatesTokenCount"),
+                            (Integer) usageMetadata.get("totalTokenCount"));
+                }
+                // A prompt Gemini will not answer at all comes back 200 with no
+                // candidates and the reason in promptFeedback.
+                if (responseBody.get("promptFeedback") instanceof Map<?, ?> feedback
+                        && feedback.get("blockReason") != null) {
+                    return ProviderErrors.refused(getProvider(), String.valueOf(feedback.get("blockReason")), model,
+                            usage);
+                }
                 List<Map<String, Object>> candidates = (List<Map<String, Object>>) responseBody.get("candidates");
                 if (candidates != null && !candidates.isEmpty()) {
+                    Object finishReason = candidates.get(0).get("finishReason");
                     Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
-                    List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
+                    List<Map<String, Object>> parts = content == null ? null
+                            : (List<Map<String, Object>>) content.get("parts");
                     // A reply is a list of parts, and a model that decided to call
                     // something puts a functionCall where the text would be. Reading
                     // only parts[0].text made such a reply look empty.
@@ -110,13 +129,11 @@ public class GeminiAgent extends AbstractAiAgent {
                         }
                     }
 
-                    Map<String, Object> usageMetadata = (Map<String, Object>) responseBody.get("usageMetadata");
-                    AiResponse.Usage usage = null;
-                    if (usageMetadata != null) {
-                        usage = new AiResponse.Usage(
-                                (Integer) usageMetadata.get("promptTokenCount"),
-                                (Integer) usageMetadata.get("candidatesTokenCount"),
-                                (Integer) usageMetadata.get("totalTokenCount"));
+                    // An answer withheld mid-way (SAFETY, RECITATION, …) finishes
+                    // with the reason and no parts. Text that did come back stands.
+                    if ((text == null || text.isBlank()) && toolCalls.isEmpty()
+                            && ProviderErrors.geminiBlocked(finishReason)) {
+                        return ProviderErrors.refused(getProvider(), String.valueOf(finishReason), model, usage);
                     }
 
                     log.debug("Gemini API call successful, usage: {}", usage);
@@ -129,11 +146,9 @@ public class GeminiAgent extends AbstractAiAgent {
                 }
             }
         } catch (Exception e) {
-            log.error("Gemini API Error during chat request", e);
-            return AiResponse.builder().content("Gemini API Error: " + e.getMessage()).build();
+            return ProviderErrors.fromException(getProvider(), e, effectiveApiKey);
         }
-        log.warn("Gemini API returned an empty or invalid response shape");
-        return AiResponse.builder().content("").build();
+        return ProviderErrors.empty(getProvider());
     }
 
     /**
@@ -165,10 +180,7 @@ public class GeminiAgent extends AbstractAiAgent {
 
     @Override
     public AiResponse transcribe(AiTranscriptionRequest request) {
-        log.warn("Gemini does not support audio transcription");
-        return AiResponse.builder()
-                .content("Error: Gemini does not support audio transcription via this SDK")
-                .build();
+        return ProviderErrors.unsupported(getProvider(), "audio transcription");
     }
 
 //    @Override

@@ -42,7 +42,11 @@ public class AiService {
 		log.info("Processing chat request using agent: {}", agent.getProvider());
 		log.debug("Chat request payload size: {} messages", request.getMessages() != null ? request.getMessages().size() : 0);
 		AiResponse response = agent.chat(request);
-		log.info("Chat request completed successfully with agent: {}", agent.getProvider());
+		if (response != null && response.isError()) {
+			log.warn("Chat request failed with agent {}: {}", agent.getProvider(), response.getError().summary());
+		} else {
+			log.info("Chat request completed successfully with agent: {}", agent.getProvider());
+		}
 		return response;
 	}
 
@@ -57,8 +61,12 @@ public class AiService {
 		}
 		log.info("Processing transcription request using agent: {}", agent.getProvider());
 		AiResponse response = agent.transcribe(request);
-		log.info("Transcription completed with agent: {} transcript=\"{}\"",
-				agent.getProvider(), response.getContent());
+		if (response != null && response.isError()) {
+			log.warn("Transcription failed with agent {}: {}", agent.getProvider(), response.getError().summary());
+		} else {
+			log.info("Transcription completed with agent: {} transcript=\"{}\"",
+					agent.getProvider(), response == null ? null : response.getContent());
+		}
 		return response;
 	}
 }

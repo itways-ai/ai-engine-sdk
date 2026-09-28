@@ -54,8 +54,7 @@ public class OpenAiAgent extends AbstractAiAgent {
                 getEffectiveModel(request.getModel(), request, DEFAULT_CHAT_MODEL));
         String effectiveApiKey = getEffectiveApiKey(request);
         if (effectiveApiKey.isEmpty()) {
-            log.error("OpenAI API Key missing");
-            return AiResponse.builder().content("Error: OpenAI API Key missing").build();
+            return ProviderErrors.missingKey(getProvider(), "OpenAI");
         }
 
         HttpHeaders headers = new HttpHeaders();
@@ -94,6 +93,10 @@ public class OpenAiAgent extends AbstractAiAgent {
                                 (Integer) usageMap.get("completion_tokens"),
                                 (Integer) usageMap.get("total_tokens"));
                     }
+                    String refusal = ProviderErrors.openAiRefusal(choices.get(0), messageObj);
+                    if (refusal != null) {
+                        return ProviderErrors.refused(getProvider(), refusal, (String) responseBody.get("model"), usage);
+                    }
 
                     log.debug("OpenAI API call successful, usage: {}", usage);
                     return AiResponse.builder()
@@ -105,11 +108,9 @@ public class OpenAiAgent extends AbstractAiAgent {
                 }
             }
         } catch (Exception e) {
-            log.error("OpenAI API Error during chat request", e);
-            return AiResponse.builder().content("OpenAI API Error: " + e.getMessage()).build();
+            return ProviderErrors.fromException(getProvider(), e, effectiveApiKey);
         }
-        log.warn("OpenAI API returned an empty or invalid response shape");
-        return AiResponse.builder().content("").build();
+        return ProviderErrors.empty(getProvider());
     }
 
     @Override
@@ -118,8 +119,7 @@ public class OpenAiAgent extends AbstractAiAgent {
                 request.getModel() != null ? request.getModel() : DEFAULT_WHISPER_MODEL);
         String effectiveApiKey = getEffectiveApiKey(request);
         if (effectiveApiKey.isEmpty()) {
-            log.error("OpenAI API Key missing");
-            return AiResponse.builder().content("Error: OpenAI API Key missing").build();
+            return ProviderErrors.missingKey(getProvider(), "OpenAI");
         }
 
         try {
@@ -154,12 +154,10 @@ public class OpenAiAgent extends AbstractAiAgent {
                         .model(request.getModel() != null ? request.getModel() : DEFAULT_WHISPER_MODEL)
                         .build();
             }
-            log.warn("No response body from OpenAI Transcription");
-            return AiResponse.builder().content("No response from OpenAI").build();
+            return ProviderErrors.empty(getProvider());
 
         } catch (Exception e) {
-            log.error("Error calling OpenAI Transcription", e);
-            return AiResponse.builder().content("Error calling OpenAI: " + e.getMessage()).build();
+            return ProviderErrors.fromException(getProvider(), e, effectiveApiKey);
         }
     }
 
