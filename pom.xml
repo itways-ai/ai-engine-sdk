@@ -6,13 +6,13 @@
 
     <groupId>com.itways.assistant</groupId>
     <artifactId>ai-engine-sdk</artifactId>
-    <version>1.0.3</version>
+    <version>1.1.0</version>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spring-boot.version>3.2.0</spring-boot.version>
+        <spring-boot.version>3.2.2</spring-boot.version>
     </properties>
 
     <dependencies>
@@ -25,6 +25,18 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
             <version>${spring-boot.version}</version>
+        </dependency>
+        <!--
+            Spring Boot 3.2.2's logback 1.4 is an SLF4J 2 binding, but without this
+            httpclient5 wins with slf4j-api 1.7.36: SLF4J 1.7 cannot see the binding
+            and every log call in this module (and in its own tests) goes nowhere.
+            Services with a Boot parent already get 2.0.11 from Boot's management;
+            this is the same version.
+        -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.11</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
