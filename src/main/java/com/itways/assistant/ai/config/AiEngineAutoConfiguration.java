@@ -15,6 +15,7 @@ import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
 import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
 import org.apache.hc.core5.ssl.SSLContexts;
 import org.apache.hc.core5.util.Timeout;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -103,9 +104,14 @@ public class AiEngineAutoConfiguration {
 		// }
 	}
 
+	/**
+	 * {@code ai.groq.vision-model}: the Groq model a request with images goes to
+	 * when neither the request nor the account named one.
+	 */
 	@Bean
-	public GroqAgent groqAgent() {
-		return new GroqAgent(null, aiRestTemplate());
+	public GroqAgent groqAgent(
+			@Value("${ai.groq.vision-model:" + GroqAgent.DEFAULT_VISION_MODEL + "}") String visionModel) {
+		return new GroqAgent(null, aiRestTemplate(), visionModel);
 	}
 
 	@Bean
@@ -113,9 +119,19 @@ public class AiEngineAutoConfiguration {
 		return new OpenAiAgent(null, aiRestTemplate());
 	}
 
+	/**
+	 * {@code ai.anthropic.default-model}: the Claude model used when neither the
+	 * request nor the account named one. {@code ai.anthropic.server-side-fallback}:
+	 * whether requests to models with refusal classifiers (Opus 5, Fable) opt into
+	 * the API's server-side fallback. {@code ai.anthropic.default-max-tokens}: the
+	 * output cap (thinking included) when the request sets none.
+	 */
 	@Bean
-	public AnthropicAgent claudeAgent() {
-		return new AnthropicAgent(null, aiRestTemplate());
+	public AnthropicAgent claudeAgent(
+			@Value("${ai.anthropic.default-model:" + AnthropicAgent.DEFAULT_MODEL + "}") String defaultModel,
+			@Value("${ai.anthropic.server-side-fallback:true}") boolean serverSideFallback,
+			@Value("${ai.anthropic.default-max-tokens:" + AnthropicAgent.DEFAULT_MAX_TOKENS + "}") int defaultMaxTokens) {
+		return new AnthropicAgent(null, aiRestTemplate(), defaultModel, serverSideFallback, defaultMaxTokens);
 	}
 
 	@Bean

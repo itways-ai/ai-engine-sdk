@@ -15,7 +15,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import lombok.AllArgsConstructor;
@@ -31,17 +30,32 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class GroqAgent extends AbstractAiAgent {
 
-	private static final String GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
-	private static final String GROQ_TRANSCRIPTION_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
+	static final String GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
+	static final String GROQ_TRANSCRIPTION_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
 	// Groq retired the Llama line; both names this agent used to hard-code are gone
 	// from the lineup. A default is a last resort — accounts should configure a model —
 	// but a dead one turns "no model configured" into an unexplained 404.
-	private static final String DEFAULT_CHAT_MODEL = "openai/gpt-oss-120b";
-	private static final String DEFAULT_WHISPER_MODEL = "whisper-large-v3";
-	private static final int TIMEOUT_MS = 60000;
+	static final String DEFAULT_CHAT_MODEL = "openai/gpt-oss-120b";
+	static final String DEFAULT_WHISPER_MODEL = "whisper-large-v3";
+	/**
+	 * The model a request with images is sent to when nobody chose a model.
+	 * {@code qwen/qwen3.8-27b} is the one vision-capable model on Groq's models
+	 * and vision pages (checked 2026-09-27; it is listed as a preview model).
+	 * Groq retired llama-4-scout on 2026-07-17 and qwen3.6-27b on 2026-09-14, so
+	 * this is a property ({@code ai.groq.vision-model}) rather than a constant:
+	 * the next retirement is a configuration change, not a release.
+	 */
+	public static final String DEFAULT_VISION_MODEL = "qwen/qwen3.8-27b";
+
+	private final String visionModel;
 
 	public GroqAgent(String defaultApiKey, RestTemplate restTemplate) {
+		this(defaultApiKey, restTemplate, DEFAULT_VISION_MODEL);
+	}
+
+	public GroqAgent(String defaultApiKey, RestTemplate restTemplate, String visionModel) {
 		super(defaultApiKey, restTemplate);
+		this.visionModel = visionModel == null || visionModel.isBlank() ? DEFAULT_VISION_MODEL : visionModel;
 	}
 
 	@Override
@@ -55,8 +69,7 @@ public class GroqAgent extends AbstractAiAgent {
 		log.info("Processing chat request for Groq, model: {}", model);
 		String apiKey = getEffectiveApiKey(request);
 		if (apiKey.isEmpty()) {
-			log.error("Groq API Key missing");
-			return errorResponse("Groq API Key missing");
+			return ProviderErrors.missingKey(getProvider(), "Groq");
 		}
 
 		try {
@@ -65,9 +78,8 @@ public class GroqAgent extends AbstractAiAgent {
 			ResponseEntity<Map> response = restTemplate.postForEntity(GROQ_CHAT_URL, entity, Map.class);
 			log.debug("Groq chat API call successful");
 			return parseChatResponse(response.getBody(), request.getModel());
-		} catch (RestClientException e) {
-			log.error("Error calling Groq Chat API", e);
-			return errorResponse("Groq API Error: " + e.getMessage());
+		} catch (Exception e) {
+			return ProviderErrors.fromException(getProvider(), e, apiKey);
 		}
 	}
 
@@ -77,8 +89,7 @@ public class GroqAgent extends AbstractAiAgent {
 		log.info("Processing transcription request for Groq, model: {}", model);
 		String apiKey = getEffectiveApiKey(request);
 		if (apiKey.isEmpty()) {
-			log.error("Groq API Key missing");
-			return errorResponse("Groq API Key missing");
+			return ProviderErrors.missingKey(getProvider(), "Groq");
 		}
 
 		try {
@@ -88,9 +99,8 @@ public class GroqAgent extends AbstractAiAgent {
 					GroqResponse.class);
 			log.debug("Groq transcription API call successful");
 			return parseTranscriptionResponse(response.getBody(), request.getModel());
-		} catch (RestClientException e) {
-			log.error("Error calling Groq Transcription API", e);
-			return errorResponse("Error calling Groq: " + e.getMessage());
+		} catch (Exception e) {
+			return ProviderErrors.fromException(getProvider(), e, apiKey);
 		}
 	}
 
@@ -124,10 +134,7 @@ public class GroqAgent extends AbstractAiAgent {
 			// caller or the account actually chose is left alone, even with images
 			// attached, because overriding a deliberate choice is worse than sending
 			// images to a model that will ignore them.
-			// TODO: verify against Groq's current lineup before relying on it — the
-			// llama-4-scout name this used to carry no longer resolves, and the demo
-			// never exercises the vision path (its documents are text).
-			model = "meta-llama/llama-4-scout-17b-16e-instruct";
+			model = visionModel;
 		}
 
 		body.put("model", model);
@@ -204,19 +211,24 @@ public class GroqAgent extends AbstractAiAgent {
 
 	private AiResponse parseChatResponse(Map<?, ?> responseBody, String requestedModel) {
 		if (responseBody == null)
-			return emptyResponse();
+			return ProviderErrors.empty(getProvider());
 
 		List<?> choices = (List<?>) responseBody.get("choices");
 		if (choices == null || choices.isEmpty())
-			return emptyResponse();
+			return ProviderErrors.empty(getProvider());
 
 		Map<?, ?> firstChoice = (Map<?, ?>) choices.get(0);
 		Map<?, ?> message = (Map<?, ?>) firstChoice.get("message");
+		AiResponse.Usage usage = parseUsage((Map<?, ?>) responseBody.get("usage"));
+		String refusal = ProviderErrors.openAiRefusal(firstChoice, message);
+		if (refusal != null) {
+			return ProviderErrors.refused(getProvider(), refusal, (String) responseBody.get("model"), usage);
+		}
 		String content = (String) message.get("content");
 
 		return AiResponse.builder().content(content).model((String) responseBody.get("model"))
 				.toolCalls(OpenAiToolFormat.toolCalls(message))
-				.usage(parseUsage((Map<?, ?>) responseBody.get("usage"))).build();
+				.usage(usage).build();
 	}
 
 	private AiResponse.Usage parseUsage(Map<?, ?> usageMap) {
@@ -247,17 +259,9 @@ public class GroqAgent extends AbstractAiAgent {
 
 	private AiResponse parseTranscriptionResponse(GroqResponse response, String requestedModel) {
 		if (response == null)
-			return errorResponse("No response from Groq");
+			return ProviderErrors.empty(getProvider());
 		return AiResponse.builder().content(response.getText())
 				.model(getOrDefault(requestedModel, DEFAULT_WHISPER_MODEL)).build();
-	}
-
-	private AiResponse errorResponse(String message) {
-		return AiResponse.builder().content(message).build();
-	}
-
-	private AiResponse emptyResponse() {
-		return AiResponse.builder().content("").build();
 	}
 
 	private <T> T getOrDefault(T value, T defaultValue) {
