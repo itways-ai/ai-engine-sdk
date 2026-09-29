@@ -2,22 +2,21 @@ package com.itways.assistant.ai.service.impl;
 
 import com.itways.assistant.ai.dto.AiChatRequest;
 import com.itways.assistant.ai.dto.AiMessage;
-import com.itways.assistant.ai.dto.AiToolCall;
 import com.itways.assistant.ai.dto.AiResponse;
+import com.itways.assistant.ai.dto.AiToolCall;
 import com.itways.assistant.ai.dto.AiTranscriptionRequest;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
-
-import java.util.HashMap;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class GeminiAgent extends AbstractAiAgent {

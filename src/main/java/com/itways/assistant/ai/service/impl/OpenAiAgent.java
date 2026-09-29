@@ -1,10 +1,16 @@
 package com.itways.assistant.ai.service.impl;
 
+import com.itways.assistant.ai.dto.AiChatRequest;
+import com.itways.assistant.ai.dto.AiResponse;
+import com.itways.assistant.ai.dto.AiTranscriptionRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -13,17 +19,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
-
-import com.itways.assistant.ai.dto.AiChatRequest;
-import com.itways.assistant.ai.dto.AiEmbeddingRequest;
-import com.itways.assistant.ai.dto.AiEmbeddingResponse;
-import com.itways.assistant.ai.dto.AiResponse;
-import com.itways.assistant.ai.dto.AiTranscriptionRequest;
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class OpenAiAgent extends AbstractAiAgent {
