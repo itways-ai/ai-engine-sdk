@@ -6,7 +6,7 @@ A small Spring library that gives a service one way to talk to several LLM provi
 - Transcription: `AiTranscriptionRequest` (audio bytes) gives back an `AiResponse` with the transcript.
 - Embeddings: `LocalEmbeddingEngine` produces vectors through a local Ollama.
 
-Who uses it: `speech-service` and `journey-engine-sdk`. Both depend on `com.itways.assistant:ai-engine-sdk:1.1.0`. `docker/java/Dockerfile` installs it from the workspace before building them.
+Who uses it: `speech-service` and `journey-engine-sdk`. Both take `com.itways.assistant:ai-engine-sdk` at the version `platform-bom` pins (1.2.0). `docker/java/Dockerfile` installs it from the workspace before building them.
 
 ## Using it
 
@@ -105,14 +105,16 @@ The shared `aiRestTemplate` has fixed timeouts: connect 15 s, response 120 s, po
 
 ## Build and test
 
-The library has no Spring Boot parent. It pins Spring Boot 3.2.2, like the other modules, and needs JDK 21. The host JDK breaks Lombok, so build in the container:
+The parent is `com.itways:platform-parent` 2.0.0 (from `common-lib`): it sets Java 21, manages the versions (Spring Boot 3.2.2) and runs JaCoCo, surefire and the sources jar. Only `langchain4j-ollama` carries its own version. The library brings `spring-web` for `RestTemplate`, not a web server; the consuming service chooses that.
+
+Install `common-lib` first, then build with JDK 21 (newer JDKs break Lombok):
 
 ```bash
-docker run --rm -v "$PWD":/src -v ~/.m2:/m2 -w /src maven:3.9-eclipse-temurin-21 \
-  mvn -B -Dmaven.repo.local=/m2 clean install
+mvn -f ../common-lib/pom.xml install -DskipTests
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn clean install
 ```
 
-`mvn install` puts `ai-engine-sdk-1.1.0.jar` in the local repository. Build it before `journey-engine`, then build `speech-service`.
+`mvn install` puts `ai-engine-sdk-1.2.0.jar` in the local repository. Build it before `journey-engine`, then build `speech-service`.
 
 The tests are under `src/test/java/com/itways/assistant/ai/service/impl/`:
 
