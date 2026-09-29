@@ -6,7 +6,7 @@ A small Spring library that gives a service one way to talk to several LLM provi
 - Transcription: `AiTranscriptionRequest` (audio bytes) gives back an `AiResponse` with the transcript.
 - Embeddings: `LocalEmbeddingEngine` produces vectors through a local Ollama.
 
-Who uses it: `speech-service` and `journey-engine-sdk`. Both take `com.itways.assistant:ai-engine-sdk` at the version `platform-bom` pins (1.2.1). `docker/java/Dockerfile` installs it from the workspace before building them.
+Who uses it: `conversation-service` and `journey-engine-sdk`. Both take `com.itways.assistant:ai-engine-sdk` at the version `platform-bom` pins (1.2.1). `docker/java/Dockerfile` installs it from the workspace before building them.
 
 ## Using it
 
@@ -114,7 +114,7 @@ mvn -f ../common-lib/pom.xml install -DskipTests
 JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn clean install
 ```
 
-`mvn install` puts `ai-engine-sdk-1.2.1.jar` in the local repository. Build it before `journey-engine`, then build `speech-service`.
+`mvn install` puts `ai-engine-sdk-1.2.1.jar` in the local repository. Build it before `journey-engine`, then build `conversation-service`.
 
 The tests are under `src/test/java/com/itways/assistant/ai/service/impl/`:
 
