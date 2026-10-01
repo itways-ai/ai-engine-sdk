@@ -73,6 +73,11 @@ class ProviderErrorMappingTest {
         MISTRAL(MistralAgent::new, """
                 {"model":"mistral-small-2506","choices":[{"finish_reason":"content_filter",
                  "message":{"role":"assistant","content":null}}]}
+                """, "content_filter"),
+        // No key of its own; the stand-in answers whatever it is told to.
+        OLLAMA((key, rest) -> new OllamaAgent("http://ollama.test:11434", null, rest), """
+                {"model":"qwen3:8b","choices":[{"finish_reason":"content_filter",
+                 "message":{"role":"assistant","content":""}}]}
                 """, "content_filter");
 
         final BiFunction<String, RestTemplate, AbstractAiAgent> factory;

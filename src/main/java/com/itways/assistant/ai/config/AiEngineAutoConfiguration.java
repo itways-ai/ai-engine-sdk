@@ -3,6 +3,8 @@ package com.itways.assistant.ai.config;
 import com.itways.assistant.ai.service.AiAgent;
 import com.itways.assistant.ai.service.impl.*;
 import jakarta.annotation.PostConstruct;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -20,8 +22,10 @@ import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
 import org.apache.hc.core5.ssl.SSLContexts;
 import org.apache.hc.core5.util.Timeout;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.convert.DurationStyle;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
@@ -139,6 +143,30 @@ public class AiEngineAutoConfiguration {
     @Bean
     public MistralAgent mistralAgent() {
         return new MistralAgent(null, aiRestTemplate());
+    }
+
+    /**
+     * Provider {@code OLLAMA}: a self-hosted Ollama, registered only when
+     * {@code ai.ollama.base-url} is set to something (unset or blank: no agent,
+     * and a request for OLLAMA is "not supported"). {@code ai.ollama.read-timeout}
+     * (default 120 s; {@code 90s}, {@code PT2M} or milliseconds) bounds one call
+     * on the agent's own client; {@code ai.ollama.default-model} is the model when
+     * neither the request nor the account names one; {@code ai.ollama.reasoning-effort}
+     * (default {@code none}: a thinking model's thinking off; blank: not sent) goes
+     * out as {@code reasoning_effort}.
+     */
+    @Bean
+    @Conditional(OllamaConfiguredCondition.class)
+    public OllamaAgent ollamaAgent(
+            @Value("${" + OllamaConfiguredCondition.BASE_URL + "}") String baseUrl,
+            @Value("${ai.ollama.read-timeout:" + OllamaAgent.DEFAULT_READ_TIMEOUT_SECONDS + "s}") String readTimeout,
+            @Value("${ai.ollama.default-model:" + OllamaAgent.DEFAULT_MODEL + "}") String defaultModel,
+            @Value("${ai.ollama.reasoning-effort:" + OllamaAgent.DEFAULT_REASONING_EFFORT + "}") String reasoningEffort) {
+        Duration timeout = DurationStyle.detectAndParse(readTimeout.strip(), ChronoUnit.MILLIS);
+        OllamaAgent agent = new OllamaAgent(baseUrl, defaultModel, reasoningEffort, OllamaAgent.restTemplate(timeout));
+        log.info("Ollama chat agent: {} (read timeout {}, default model {}, reasoning effort {})", agent.chatUrl(),
+                timeout, defaultModel, agent.reasoningEffort() == null ? "(not sent)" : agent.reasoningEffort());
+        return agent;
     }
 
     @Bean
