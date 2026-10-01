@@ -8,6 +8,8 @@ import com.itways.assistant.ai.dto.AiResponse;
 import java.io.InterruptedIOException;
 import java.net.SocketTimeoutException;
 import java.net.http.HttpTimeoutException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -40,6 +42,13 @@ final class ProviderErrors {
      */
     private static final Pattern KEY_SHAPES = Pattern.compile("\\b(sk-|gsk_|AIza)[A-Za-z0-9_\\-*.]{4,}");
 
+    /** Google's key shape, however short, and a {@code key=} query parameter in a quoted URL. */
+    private static final Pattern GOOGLE_KEY = Pattern.compile("AIza[0-9A-Za-z_\\-]+");
+    private static final Pattern KEY_PARAM = Pattern.compile("(?i)([?&]key=)[^&\\s\"']+");
+
+    /** Upper bound per detail field, so a hostile body cannot flood the log. Real values are far shorter. */
+    private static final int MAX_DETAIL = 2000;
+
     /**
      * Gemini block reasons ({@code promptFeedback.blockReason}) and finish reasons
      * that mean the answer was withheld rather than finished.
@@ -59,6 +68,12 @@ final class ProviderErrors {
             log.error("{} call failed: {}", provider, error.getMessage(), e);
         } else {
             log.warn("{} call failed: {}: {}", provider, error.summary(), error.getMessage());
+            if (e instanceof RestClientResponseException http) {
+                String details = errorDetails(safeBody(http), apiKey);
+                if (details != null) {
+                    log.warn("{} error details: {}", provider, details);
+                }
+            }
         }
         return AiResponse.failure(error);
     }
@@ -163,7 +178,7 @@ final class ProviderErrors {
             return false;
         }
         boolean text = message.get("content") instanceof String content && !content.isBlank();
-        boolean tools = message.get("tool_calls") instanceof java.util.List<?> calls && !calls.isEmpty();
+        boolean tools = message.get("tool_calls") instanceof List<?> calls && !calls.isEmpty();
         return text || tools;
     }
 
@@ -181,9 +196,92 @@ final class ProviderErrors {
         if (apiKey != null && apiKey.length() >= 4) {
             clean = clean.replace(apiKey, "[redacted]");
         }
-        clean = KEY_SHAPES.matcher(clean).replaceAll("[redacted]");
-        clean = clean.replaceAll("\\s+", " ").trim();
+        clean = scrubKeys(clean, apiKey).replaceAll("\\s+", " ").trim();
         return clean.length() > MAX_MESSAGE ? clean.substring(0, MAX_MESSAGE) + "…" : clean;
+    }
+
+    private static String scrubKeys(String text, String apiKey) {
+        String clean = text;
+        if (apiKey != null && apiKey.length() >= 4) {
+            clean = clean.replace(apiKey, "[redacted]");
+        }
+        clean = KEY_SHAPES.matcher(clean).replaceAll("[redacted]");
+        clean = GOOGLE_KEY.matcher(clean).replaceAll("[redacted]");
+        return KEY_PARAM.matcher(clean).replaceAll("$1[redacted]");
+    }
+
+    /**
+     * The structured {@code error.details[]} of a Google-style error body
+     * (Gemini, and any provider that uses {@code google.rpc} types), as one line:
+     * each {@code QuotaFailure} violation's quotaMetric, quotaId, model, location
+     * and quotaValue, the {@code RetryInfo} retryDelay and any {@code Help} link.
+     * These are what tell a free-tier limit from a per-model limit or a spending
+     * cap, so they are not cut to the message cap. Keys are scrubbed. Null when
+     * the body has none of them.
+     */
+    static String errorDetails(String body, String apiKey) {
+        if (body == null || body.isBlank()) {
+            return null;
+        }
+        JsonNode details;
+        try {
+            JsonNode root = JSON.readTree(body);
+            JsonNode error = root == null ? null : root.get("error");
+            details = error == null ? null : error.get("details");
+        } catch (Exception notJson) {
+            return null;
+        }
+        if (details == null || !details.isArray()) {
+            return null;
+        }
+        List<String> parts = new ArrayList<>();
+        for (JsonNode detail : details) {
+            String type = detail.path("@type").asText("");
+            if (type.endsWith("google.rpc.QuotaFailure")) {
+                for (JsonNode v : detail.path("violations")) {
+                    JsonNode dims = v.path("quotaDimensions");
+                    parts.add(fields(apiKey, "quotaMetric", text(v, "quotaMetric"), "quotaId", text(v, "quotaId"),
+                            "model", text(dims, "model"), "location", text(dims, "location"), "quotaValue",
+                            text(v, "quotaValue")));
+                }
+            } else if (type.endsWith("google.rpc.RetryInfo")) {
+                parts.add(fields(apiKey, "retryDelay", text(detail, "retryDelay")));
+            } else if (type.endsWith("google.rpc.Help")) {
+                for (JsonNode link : detail.path("links")) {
+                    parts.add(fields(apiKey, "help", text(link, "url")));
+                }
+            }
+        }
+        parts.removeIf(String::isEmpty);
+        return parts.isEmpty() ? null : String.join("; ", parts);
+    }
+
+    private static String text(JsonNode node, String field) {
+        JsonNode value = node == null ? null : node.get(field);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        return value.isValueNode() ? value.asText() : value.toString();
+    }
+
+    /** {@code name=value} pairs, skipping absent values, each value key-scrubbed and on one line. */
+    private static String fields(String apiKey, String... namesAndValues) {
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i + 1 < namesAndValues.length; i += 2) {
+            String value = namesAndValues[i + 1];
+            if (value == null || value.isBlank()) {
+                continue;
+            }
+            String clean = scrubKeys(value, apiKey).replaceAll("\\s+", " ").trim();
+            if (clean.length() > MAX_DETAIL) {
+                clean = clean.substring(0, MAX_DETAIL) + "…";
+            }
+            if (!out.isEmpty()) {
+                out.append(", ");
+            }
+            out.append(namesAndValues[i]).append('=').append(clean);
+        }
+        return out.toString();
     }
 
     /**
