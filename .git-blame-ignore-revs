@@ -1,0 +1,6 @@
+# Commits that only reformat code; `git blame` skips them with
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# (GitHub reads this file on its own).
+
+# ARC-04: apply the shared formatter
+2febadc67acec40f71a771a27e74e142b28308d5

@@ -1,10 +1,7 @@
 package com.itways.assistant.ai.service.impl;
 
-import com.itways.assistant.ai.dto.AiEmbeddingRequest;
-import com.itways.assistant.ai.dto.AiEmbeddingResponse;
 import com.itways.assistant.ai.dto.BaseAiRequest;
 import com.itways.assistant.ai.service.AiAgent;
-
 import org.springframework.web.client.RestTemplate;
 
 

@@ -1,26 +1,23 @@
 package com.itways.assistant.ai.service;
 
-import java.util.Map;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Service;
-
 import com.itways.assistant.ai.dto.AiChatRequest;
 import com.itways.assistant.ai.dto.AiResponse;
 import com.itways.assistant.ai.dto.AiTranscriptionRequest;
-
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiService {
 
-	@Autowired
-	@Qualifier("aiAgents")
-	private final Map<String, AiAgent> aiAgents;
+    @Autowired
+    @Qualifier("aiAgents")
+    private final Map<String, AiAgent> aiAgents;
 
 //	private AiAgent getAgent(String provider) {
 //		if (provider != null && aiAgents.containsKey(provider.toUpperCase())) {
@@ -29,36 +26,44 @@ public class AiService {
 //		return defaultAiAgent;
 //	}
 
-	public AiResponse chat(AiChatRequest request) {
-		// determine provider from the config we injected in assistant-service
-		String provider = request.getConfig() != null ? request.getConfig().getProvider() : null;
-		if(provider == null){
-			throw new IllegalArgumentException("No AI provider specified in the Request Config");
-		}
-		AiAgent agent = aiAgents.get(provider.toUpperCase());
-		if(agent == null){
-			throw new IllegalArgumentException("provider " + provider + " is not supported");
-		}
-		log.info("Processing chat request using agent: {}", agent.getProvider());
-		log.debug("Chat request payload size: {} messages", request.getMessages() != null ? request.getMessages().size() : 0);
-		AiResponse response = agent.chat(request);
-		log.info("Chat request completed successfully with agent: {}", agent.getProvider());
-		return response;
-	}
+    public AiResponse chat(AiChatRequest request) {
+        // determine provider from the config we injected in conversation-service
+        String provider = request.getConfig() != null ? request.getConfig().getProvider() : null;
+        if(provider == null){
+            throw new IllegalArgumentException("No AI provider specified in the Request Config");
+        }
+        AiAgent agent = aiAgents.get(provider.toUpperCase());
+        if(agent == null){
+            throw new IllegalArgumentException("provider " + provider + " is not supported");
+        }
+        log.info("Processing chat request using agent: {}", agent.getProvider());
+        log.debug("Chat request payload size: {} messages", request.getMessages() != null ? request.getMessages().size() : 0);
+        AiResponse response = agent.chat(request);
+        if (response != null && response.isError()) {
+            log.warn("Chat request failed with agent {}: {}", agent.getProvider(), response.getError().summary());
+        } else {
+            log.info("Chat request completed successfully with agent: {}", agent.getProvider());
+        }
+        return response;
+    }
 
-	public AiResponse transcribe(AiTranscriptionRequest request) {
-		String provider = request.getConfig() != null ? request.getConfig().getProvider() : null;
-		if(provider == null){
-			throw new IllegalArgumentException("No AI provider specified in the Request Config");
-		}
-		AiAgent agent = aiAgents.get(provider.toUpperCase());
-		if(agent == null){
-			throw new IllegalArgumentException("provider " + provider + " is not supported");
-		}
-		log.info("Processing transcription request using agent: {}", agent.getProvider());
-		AiResponse response = agent.transcribe(request);
-		log.info("Transcription completed with agent: {} transcript=\"{}\"",
-				agent.getProvider(), response.getContent());
-		return response;
-	}
+    public AiResponse transcribe(AiTranscriptionRequest request) {
+        String provider = request.getConfig() != null ? request.getConfig().getProvider() : null;
+        if(provider == null){
+            throw new IllegalArgumentException("No AI provider specified in the Request Config");
+        }
+        AiAgent agent = aiAgents.get(provider.toUpperCase());
+        if(agent == null){
+            throw new IllegalArgumentException("provider " + provider + " is not supported");
+        }
+        log.info("Processing transcription request using agent: {}", agent.getProvider());
+        AiResponse response = agent.transcribe(request);
+        if (response != null && response.isError()) {
+            log.warn("Transcription failed with agent {}: {}", agent.getProvider(), response.getError().summary());
+        } else {
+            log.info("Transcription completed with agent: {} transcript=\"{}\"",
+                    agent.getProvider(), response == null ? null : response.getContent());
+        }
+        return response;
+    }
 }

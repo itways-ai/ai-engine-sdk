@@ -11,7 +11,7 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 public abstract class BaseAiRequest {
     private AiRequestConfig config;
-    
+
     private Double temperature;
     private String systemPrompt;
 }

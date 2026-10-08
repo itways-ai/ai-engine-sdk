@@ -21,3 +21,6 @@ target/generated-sources/
 
 # OS
 .DS_Store
+
+# Logs
+*.log

@@ -1,12 +1,9 @@
 package com.itways.assistant.ai.service;
 
 import com.itways.assistant.ai.dto.AiChatRequest;
-import com.itways.assistant.ai.dto.AiEmbeddingRequest;
-import com.itways.assistant.ai.dto.AiEmbeddingResponse;
 import com.itways.assistant.ai.dto.AiResponse;
 import com.itways.assistant.ai.dto.AiTranscriptionRequest;
 
-import java.util.List;
 
 public interface AiAgent {
     /**

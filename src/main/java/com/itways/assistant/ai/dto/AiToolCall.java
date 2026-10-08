@@ -1,7 +1,6 @@
 package com.itways.assistant.ai.dto;
 
 import java.util.Map;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,17 +21,17 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AiToolCall {
 
-	private String id;
-	private String name;
-	/** Arguments as the model supplied them, already parsed. Empty when it passed none. */
-	private Map<String, Object> arguments;
+    private String id;
+    private String name;
+    /** Arguments as the model supplied them, already parsed. Empty when it passed none. */
+    private Map<String, Object> arguments;
 
-	public static AiToolCall of(String id, String name, Map<String, Object> arguments) {
-		return new AiToolCall(id, name, arguments == null ? Map.of() : arguments);
-	}
+    public static AiToolCall of(String id, String name, Map<String, Object> arguments) {
+        return new AiToolCall(id, name, arguments == null ? Map.of() : arguments);
+    }
 
-	public String argument(String key) {
-		Object value = arguments == null ? null : arguments.get(key);
-		return value == null ? null : String.valueOf(value);
-	}
+    public String argument(String key) {
+        Object value = arguments == null ? null : arguments.get(key);
+        return value == null ? null : String.valueOf(value);
+    }
 }
